@@ -624,6 +624,104 @@ function TransactionsTab() {
   );
 }
 
+// ---------- 修改自己的密码 ----------
+
+type PasswordFormValues = {
+  oldPassword: string;
+  newPassword: string;
+  confirmPassword: string;
+};
+
+function AccountTab({ admin }: { admin: SessionUser }) {
+  const { message } = App.useApp();
+  const [form] = Form.useForm<PasswordFormValues>();
+  const [submitting, setSubmitting] = useState(false);
+
+  async function onFinish(values: PasswordFormValues) {
+    setSubmitting(true);
+    try {
+      await request("/api/auth/password", {
+        method: "POST",
+        body: JSON.stringify({
+          oldPassword: values.oldPassword,
+          newPassword: values.newPassword,
+        }),
+      });
+      form.resetFields();
+      message.success("密码已修改，其它设备需要重新登录");
+    } catch (err) {
+      message.error(err instanceof Error ? err.message : "修改失败");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <Form<PasswordFormValues>
+      form={form}
+      layout="vertical"
+      onFinish={onFinish}
+      autoComplete="off"
+      className="max-w-sm"
+    >
+      <div className="mb-4 rounded-xl border border-zinc-200/80 bg-zinc-50/80 px-4 py-3 text-xs text-zinc-600 dark:border-zinc-700/70 dark:bg-zinc-900/40 dark:text-zinc-400">
+        正在修改管理员「{admin.username}」的登录密码。需要先验证原密码；
+        修改成功后当前浏览器会保持登录，其它设备上的会话会全部失效。
+      </div>
+
+      <Form.Item
+        name="oldPassword"
+        label="原密码"
+        rules={[{ required: true, message: "请输入原密码" }]}
+      >
+        <Input.Password placeholder="当前登录密码" autoComplete="current-password" />
+      </Form.Item>
+
+      <Form.Item
+        name="newPassword"
+        label="新密码"
+        rules={[
+          { required: true, message: "请输入新密码" },
+          { min: 6, message: "密码至少 6 位" },
+          ({ getFieldValue }) => ({
+            validator(_, value) {
+              if (!value || value !== getFieldValue("oldPassword")) {
+                return Promise.resolve();
+              }
+              return Promise.reject(new Error("新密码不能与原密码相同"));
+            },
+          }),
+        ]}
+      >
+        <Input.Password placeholder="至少 6 位" autoComplete="new-password" />
+      </Form.Item>
+
+      <Form.Item
+        name="confirmPassword"
+        label="确认新密码"
+        dependencies={["newPassword"]}
+        rules={[
+          { required: true, message: "请再次输入新密码" },
+          ({ getFieldValue }) => ({
+            validator(_, value) {
+              if (!value || getFieldValue("newPassword") === value) {
+                return Promise.resolve();
+              }
+              return Promise.reject(new Error("两次输入的新密码不一致"));
+            },
+          }),
+        ]}
+      >
+        <Input.Password placeholder="再输入一次" autoComplete="new-password" />
+      </Form.Item>
+
+      <Button type="primary" htmlType="submit" loading={submitting}>
+        修改密码
+      </Button>
+    </Form>
+  );
+}
+
 // ---------- 页面 ----------
 
 export function AdminPanel({ admin }: { admin: SessionUser }) {
@@ -656,6 +754,7 @@ export function AdminPanel({ admin }: { admin: SessionUser }) {
               { key: "users", label: "用户与余额", children: <UsersTab admin={admin} /> },
               { key: "settings", label: "定价与生图 API", children: <SettingsTab /> },
               { key: "transactions", label: "消费流水", children: <TransactionsTab /> },
+              { key: "account", label: "修改密码", children: <AccountTab admin={admin} /> },
             ]}
           />
         </div>

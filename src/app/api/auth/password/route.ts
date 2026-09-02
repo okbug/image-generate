@@ -39,6 +39,12 @@ export async function POST(req: Request) {
   if (!row || !verifyPassword(oldPassword, row.password_hash)) {
     return NextResponse.json({ error: "原密码不正确" }, { status: 400 });
   }
+  if (oldPassword === newPassword) {
+    return NextResponse.json(
+      { error: "新密码不能与原密码相同" },
+      { status: 400 },
+    );
+  }
 
   updateUserPassword(user.id, hashPassword(newPassword));
   const currentToken = await getSessionToken();
