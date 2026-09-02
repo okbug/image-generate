@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server";
 
-import { resolveCredentials } from "@/lib/api-credentials";
+import {
+  MISSING_CREDENTIALS_MESSAGE,
+  resolveCredentials,
+} from "@/lib/api-credentials";
+import { requireUser } from "@/lib/auth";
+import { getSettings } from "@/lib/settings";
+import { billedUpstreamCall } from "@/lib/upstream";
 
 export const runtime = "nodejs";
 
@@ -23,14 +29,13 @@ const SYSTEM_PROMPT = `你是一名专业的 AI 图像生成提示词优化助�
 4. 不要输出任何解释、引号、前缀（如"优化后："），直接输出最终 prompt。`;
 
 export async function POST(req: Request) {
+  const user = await requireUser();
+  if (user instanceof NextResponse) return user;
+
   const creds = resolveCredentials(req);
   if (!creds) {
-    return NextResponse.json(
-      { error: "缺少 API 凭证（环境变量或自定义凭证均未设置）" },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: MISSING_CREDENTIALS_MESSAGE }, { status: 500 });
   }
-  const { baseUrl, apiKey } = creds;
 
   let body: OptimizeBody;
   try {
@@ -44,58 +49,35 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "prompt 不能为空" }, { status: 400 });
   }
 
-  let upstream: Response;
-  try {
-    upstream = await fetch(
-      `${baseUrl.replace(/\/$/, "")}/v1/chat/completions`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "gpt-5.5",
-          messages: [
-            { role: "system", content: SYSTEM_PROMPT },
-            { role: "user", content: original },
-          ],
-          temperature: 0.7,
-        }),
-      },
-    );
-  } catch (err) {
-    return NextResponse.json(
-      { error: `无法访问上游服务 (${baseUrl})`, detail: String(err) },
-      { status: 502 },
-    );
-  }
+  const cost = creds.source === "custom" ? 0 : getSettings().priceOptimize;
 
-  const text = await upstream.text();
-  if (!upstream.ok) {
-    return NextResponse.json(
-      { error: `上游接口错误 (${upstream.status})`, detail: text },
-      { status: upstream.status },
-    );
-  }
-
-  let parsed: ChatCompletionResponse;
-  try {
-    parsed = JSON.parse(text) as ChatCompletionResponse;
-  } catch {
-    return NextResponse.json(
-      { error: "上游返回的不是合法 JSON", detail: text },
-      { status: 502 },
-    );
-  }
-
-  const optimized = parsed.choices?.[0]?.message?.content?.trim();
-  if (!optimized) {
-    return NextResponse.json(
-      { error: "上游未返回有效内容", detail: text },
-      { status: 502 },
-    );
-  }
-
-  return NextResponse.json({ prompt: optimized });
+  return billedUpstreamCall({
+    user,
+    cost,
+    type: "optimize",
+    note: "优化提示词",
+    creds,
+    pathname: "/v1/chat/completions",
+    payload: {
+      model: "gpt-5.5",
+      messages: [
+        { role: "system", content: SYSTEM_PROMPT },
+        { role: "user", content: original },
+      ],
+      temperature: 0.7,
+    },
+    mapSuccess: (data) => {
+      const optimized = (data as ChatCompletionResponse).choices?.[0]?.message
+        ?.content?.trim();
+      if (!optimized) {
+        return {
+          ok: false,
+          status: 502,
+          error: "上游未返回有效内容",
+          detail: JSON.stringify(data),
+        };
+      }
+      return { prompt: optimized };
+    },
+  });
 }

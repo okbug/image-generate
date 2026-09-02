@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // 隔离构建目录（NEXT_DIST_DIR=.next-dev）里的生成产物同样不该检查
+    ".next-dev/**",
   ]),
 ]);
 

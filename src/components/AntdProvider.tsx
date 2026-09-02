@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ConfigProvider, theme } from "antd";
+import { App, ConfigProvider, theme } from "antd";
 import zhCN from "antd/locale/zh_CN";
 
 function useIsDark(): boolean {
@@ -45,7 +45,8 @@ export function AntdProvider({ children }: { children: React.ReactNode }) {
         },
       }}
     >
-      {children}
+      {/* component={false}：不额外包一层 div，仅提供 message/modal 上下文 */}
+      <App component={false}>{children}</App>
     </ConfigProvider>
   );
 }

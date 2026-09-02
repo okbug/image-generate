@@ -3,11 +3,12 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev -p 3005",
+    "dev": "next dev -p 3006",
     "build": "next build",
-    "postbuild": "cp -R public .next/standalone/ && mkdir -p .next/standalone/.next && cp -R .next/static .next/standalone/.next/",
-    "start": "UPLOAD_TMP_DIR=$PWD/public/images/tmp HOSTNAME=0.0.0.0 PORT=3005 node .next/standalone/server.js",
-    "lint": "eslint"
+    "postbuild": "D=${NEXT_DIST_DIR:-.next}; cp -R public $D/standalone/ && mkdir -p $D/standalone/$D && cp -R $D/static $D/standalone/$D/",
+    "start": "D=${NEXT_DIST_DIR:-.next}; UPLOAD_TMP_DIR=$PWD/public/images/tmp UPLOAD_PERMANENT_DIR=$PWD/public/images/permanent DATA_DIR=$PWD/data HOSTNAME=0.0.0.0 PORT=${PORT:-3006} node $D/standalone/server.js",
+    "lint": "eslint",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@ant-design/nextjs-registry": "^1.3.0",

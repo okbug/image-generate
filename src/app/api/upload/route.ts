@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { mkdir, unlink, writeFile } from "node:fs/promises";
 import crypto from "node:crypto";
+import { getCurrentUser, unauthorized } from "@/lib/auth";
 import {
   UPLOAD_TMP_ROUTE,
   UPLOAD_PERMANENT_ROUTE,
@@ -76,9 +77,12 @@ export async function POST(req: Request) {
       permanent: true
     });
   } else {
-    // 临时存储模式（原有功能）
+    // 临时存储模式（原有功能）：需要登录，避免匿名占用磁盘
     if (password) {
       return NextResponse.json({ error: "密码错误" }, { status: 401 });
+    }
+    if (!(await getCurrentUser())) {
+      return unauthorized("请先登录后再上传参考图");
     }
 
     await mkdir(getUploadTmpDir(), { recursive: true });

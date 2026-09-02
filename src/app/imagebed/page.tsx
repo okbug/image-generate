@@ -285,6 +285,8 @@ export default function ImageBedPage() {
                           key={image.uid}
                           className="group relative overflow-hidden rounded-xl border border-zinc-200 bg-white/70 dark:border-zinc-700 dark:bg-zinc-900/50"
                         >
+                          {/* 预览的是本地 blob URL，next/image 无法优化 */}
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
                             src={image.previewSrc}
                             alt={`已上传图片 ${idx + 1}`}
@@ -342,7 +344,7 @@ export default function ImageBedPage() {
               <ul className="list-disc list-inside space-y-1 text-zinc-500 dark:text-zinc-500">
                 <li>上传的图片将永久存储在服务器</li>
                 <li>支持拖拽上传和粘贴上传（Ctrl/Cmd + V）</li>
-                <li>点击"复制链接"可直接复制图片地址</li>
+                <li>点击「复制链接」可直接复制图片地址</li>
               </ul>
             </div>
           </>

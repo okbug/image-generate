@@ -15,6 +15,7 @@
 
 # next.js
 /.next/
+/.next-dev/
 /out/
 
 # production
@@ -37,6 +38,13 @@ yarn-error.log*
 # uploaded temp images (created at runtime)
 /public/images/tmp/*
 !/public/images/tmp/.gitkeep
+
+# runtime data (sqlite db)
+/data
+
+# packaging leftovers
+*.tar.gz
+.codex
 
 # vercel
 .vercel

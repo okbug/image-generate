@@ -1,3 +1,5 @@
+import type { BillingInfo } from "./auth";
+
 export type ImageOutputFormat = "png" | "webp" | "jpeg";
 
 export type ImageItem = {
@@ -28,6 +30,8 @@ export type ImagesGenerationsResponse = {
   size?: string;
   model?: string;
   usage?: ImageUsage;
+  /** 本站附加：本次扣费与扣费后余额 */
+  billing?: BillingInfo;
 };
 
 export type GenerateRequestBody = {
@@ -41,6 +45,11 @@ export type GenerateRequestBody = {
 export type GenerateApiError = {
   error: string;
   detail?: string;
+  /** UNAUTHORIZED / INSUFFICIENT_BALANCE 等 */
+  code?: string;
+  required?: number;
+  balance?: number;
+  billing?: BillingInfo;
 };
 
 export type GenerateApiResult = ImagesGenerationsResponse | GenerateApiError;

@@ -1,8 +1,16 @@
 import { NextResponse } from "next/server";
 
-import { resolveCredentials } from "@/lib/api-credentials";
+import {
+  MISSING_CREDENTIALS_MESSAGE,
+  resolveCredentials,
+} from "@/lib/api-credentials";
+import { requireUser } from "@/lib/auth";
+import { getSettings } from "@/lib/settings";
+import { billedUpstreamCall } from "@/lib/upstream";
 
 export const runtime = "nodejs";
+
+const MAX_REFERENCE_IMAGES = 10;
 
 type EditBody = {
   prompt?: string;
@@ -13,14 +21,13 @@ type EditBody = {
 };
 
 export async function POST(req: Request) {
+  const user = await requireUser();
+  if (user instanceof NextResponse) return user;
+
   const creds = resolveCredentials(req);
   if (!creds) {
-    return NextResponse.json(
-      { error: "缺少 API 凭证（环境变量或自定义凭证均未设置）" },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: MISSING_CREDENTIALS_MESSAGE }, { status: 500 });
   }
-  const { baseUrl, apiKey } = creds;
 
   let body: EditBody;
   try {
@@ -43,9 +50,9 @@ export async function POST(req: Request) {
   if (imageUrls.length === 0) {
     return NextResponse.json({ error: "imageUrls 不能为空" }, { status: 400 });
   }
-  if (imageUrls.length > 10) {
+  if (imageUrls.length > MAX_REFERENCE_IMAGES) {
     return NextResponse.json(
-      { error: "最多支持 10 张参考图片" },
+      { error: `最多支持 ${MAX_REFERENCE_IMAGES} 张参考图片` },
       { status: 400 },
     );
   }
@@ -66,40 +73,15 @@ export async function POST(req: Request) {
     n: 1,
   };
 
-  let upstream: Response;
-  try {
-    upstream = await fetch(
-      `${baseUrl.replace(/\/$/, "")}/v1/images/edits`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      },
-    );
-  } catch (err) {
-    return NextResponse.json(
-      { error: `无法访问上游服务 (${baseUrl})`, detail: String(err) },
-      { status: 502 },
-    );
-  }
+  const cost = creds.source === "custom" ? 0 : getSettings().priceEdit;
 
-  const text = await upstream.text();
-  if (!upstream.ok) {
-    return NextResponse.json(
-      { error: `上游接口错误 (${upstream.status})`, detail: text },
-      { status: upstream.status },
-    );
-  }
-
-  try {
-    return NextResponse.json(JSON.parse(text));
-  } catch {
-    return NextResponse.json(
-      { error: "上游返回的不是合法 JSON", detail: text },
-      { status: 502 },
-    );
-  }
+  return billedUpstreamCall({
+    user,
+    cost,
+    type: "edit",
+    note: `编辑 · ${imageUrls.length} 张参考图 · ${payload.size}`,
+    creds,
+    pathname: "/v1/images/edits",
+    payload,
+  });
 }

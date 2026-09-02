@@ -1,13 +1,18 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 
 import { Image, Select, Upload, type UploadFile, type UploadProps } from "antd";
 import { ClipboardPaste, ImagePlus, UploadCloud, X } from "lucide-react";
 
 import { CustomApiModal } from "@/components/CustomApiModal";
+import { UserBar } from "@/components/UserBar";
+import { formatCents } from "@/lib/money";
+import { useAuth } from "@/lib/use-auth";
 import { useCustomApi } from "@/lib/use-custom-api";
 import {
+  type GenerateApiError,
   type GenerateApiResult,
   type ImageItem,
   type ImageUsage,
@@ -102,6 +107,23 @@ export default function Home() {
     useCustomApi();
   const [apiModalOpen, setApiModalOpen] = useState(false);
 
+  const auth = useAuth();
+  const [needLogin, setNeedLogin] = useState(false);
+
+  /** 统一处理接口错误：未登录 / 余额不足 / 其它 */
+  function handleApiError(status: number, json: unknown) {
+    const err = (json ?? {}) as GenerateApiError;
+    if (status === 401 || err.code === "UNAUTHORIZED") {
+      setNeedLogin(true);
+      setError(err.error ?? "请先登录后再操作");
+      return;
+    }
+    setNeedLogin(false);
+    if (typeof err.balance === "number") auth.setBalance(err.balance);
+    else if (err.billing) auth.setBalance(err.billing.balance);
+    setError(err.error ?? `请求失败 (${status})`);
+  }
+
   // 进入页面时尝试清理服务端遗留的过期临时图片
   useEffect(() => {
     fetch("/api/cleanup", { method: "POST" }).catch(() => {});
@@ -135,10 +157,7 @@ export default function Home() {
       const json = (await res.json()) as GenerateApiResult;
 
       if (!res.ok || isGenerateError(json)) {
-        const message = isGenerateError(json)
-          ? json.error
-          : `请求失败 (${res.status})`;
-        setError(message);
+        handleApiError(res.status, json);
         return;
       }
 
@@ -147,7 +166,9 @@ export default function Home() {
         return;
       }
 
+      setNeedLogin(false);
       setResult(json);
+      if (json.billing) auth.setBalance(json.billing.balance);
     } catch (err) {
       setError(err instanceof Error ? err.message : "未知错误");
     } finally {
@@ -165,12 +186,20 @@ export default function Home() {
         headers: buildHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify({ prompt }),
       });
-      const json = (await res.json()) as { prompt?: string; error?: string };
+      const json = (await res.json()) as {
+        prompt?: string;
+        error?: string;
+        code?: string;
+        balance?: number;
+        billing?: { charged: number; balance: number };
+      };
       if (!res.ok || !json.prompt) {
-        setError(json.error ?? `优化失败 (${res.status})`);
+        handleApiError(res.status, json);
         return;
       }
+      setNeedLogin(false);
       setPrompt(json.prompt);
+      if (json.billing) auth.setBalance(json.billing.balance);
     } catch (err) {
       setError(err instanceof Error ? err.message : "未知错误");
     } finally {
@@ -273,6 +302,7 @@ export default function Home() {
         error?: string;
       };
       if (!res.ok || !json.url || !json.fileName) {
+        if (res.status === 401) setNeedLogin(true);
         setError(json.error ?? `上传失败 (${res.status})`);
         setUploadFileList((current) =>
           current.filter((item) => item.uid !== uid),
@@ -398,16 +428,16 @@ export default function Home() {
       });
       const json = (await res.json()) as GenerateApiResult;
       if (!res.ok || isGenerateError(json)) {
-        setError(
-          isGenerateError(json) ? json.error : `请求失败 (${res.status})`,
-        );
+        handleApiError(res.status, json);
         return;
       }
       if (!json.data || json.data.length === 0) {
         setError("接口未返回图片");
         return;
       }
+      setNeedLogin(false);
       setResult(json);
+      if (json.billing) auth.setBalance(json.billing.balance);
     } catch (err) {
       setError(err instanceof Error ? err.message : "未知错误");
     } finally {
@@ -457,6 +487,17 @@ export default function Home() {
     },
   );
 
+  const costHint = (() => {
+    if (auth.loading) return null;
+    if (!auth.user) return "登录后即可生成";
+    if (customApiActive) return "使用自定义 API，不扣余额";
+    if (!auth.prices) return null;
+    const cents = mode === Mode.Edit ? auth.prices.edit : auth.prices.generate;
+    return cents > 0
+      ? `本次消耗 ${formatCents(cents)}，余额 ${formatCents(auth.user.balance)}`
+      : "本次免费";
+  })();
+
   return (
     <div className="app-aurora min-h-screen px-4 py-6 md:px-8 md:py-14">
       <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 md:gap-10">
@@ -471,11 +512,16 @@ export default function Home() {
             </h1>
             <p className="max-w-xl text-sm leading-relaxed text-zinc-600 dark:text-zinc-400 md:text-base">
               {mode === Mode.Edit
-                ? "上传最多三张参考图，描述想要的修改，由模型重绘。"
+                ? `上传最多 ${MAX_UPLOAD_COUNT} 张参考图，描述想要的修改，由模型重绘。`
                 : "把你脑中的画面写下来，几秒后就能拿到一张高清成片。"}
             </p>
           </div>
-          <div className="flex shrink-0 items-center gap-2 self-start">
+          <div className="flex shrink-0 flex-wrap items-center gap-2 self-start">
+            <UserBar
+              user={auth.user}
+              loading={auth.loading}
+              onLogout={() => void auth.logout()}
+            />
             <div className="flex h-10 items-center gap-1 rounded-full border border-zinc-200/80 bg-white/70 p-1 backdrop-blur dark:border-zinc-700/70 dark:bg-zinc-900/60">
               {MODE_OPTIONS.map((opt) => (
                 <button
@@ -828,6 +874,11 @@ export default function Home() {
 
           <div className="flex flex-col gap-3 border-t border-zinc-200/70 pt-4 dark:border-zinc-800/70 sm:flex-row sm:items-center sm:justify-between">
             <span className="text-xs text-zinc-500 dark:text-zinc-500">
+              {costHint && (
+                <span className="font-medium text-indigo-600 dark:text-indigo-300">
+                  {costHint} ·{" "}
+                </span>
+              )}
               单张约 30 秒 – 2 分钟，请保持页面打开。
             </span>
             <button
@@ -860,6 +911,14 @@ export default function Home() {
         {error && (
           <div className="rounded-2xl border border-red-200 bg-red-50/80 px-5 py-4 text-sm text-red-700 backdrop-blur dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300">
             <strong className="font-semibold">出错了：</strong> {error}
+            {needLogin && (
+              <Link
+                href="/login"
+                className="ml-2 font-medium underline underline-offset-2 hover:text-red-900 dark:hover:text-red-100"
+              >
+                去登录 →
+              </Link>
+            )}
           </div>
         )}
 
