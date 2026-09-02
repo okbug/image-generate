@@ -108,6 +108,13 @@ NEXT_DIST_DIR=.next-dev PORT=3006 DATA_DIR=/root/projects/image-generate/data np
 - 想让 3006 实例常驻，照 `image-generate.service` 复制一个 `image-generate-dev.service`：`ExecStart=... node .next-dev/standalone/server.js`，`Environment=PORT=3006`、`DATA_DIR=/root/projects/image-generate/data`、`UPLOAD_TMP_DIR=...public/images/tmp`、`UPLOAD_PERMANENT_DIR=...public/images/permanent`。Caddy 里再加一个域名 block 反代到 `127.0.0.1:3006` 即可。
 - `DATA_DIR` 一定要给绝对路径：standalone 的 `server.js` 会 `chdir` 到产物目录，默认的 `./data` 会落在 `.next*/standalone/` 里，下次 build 就没了。
 
+**用 IP / 域名访问 `next dev` 必须配 `allowedDevOrigins`**
+- Next 16 的 dev server 默认只允许 `localhost` 请求 `/_next/*` 这类 dev 资源。用服务器公网 IP 访问时，客户端 JS bundle 被拦，页面 HTML 能正常渲染（HTTP 200，看着没问题），但 React 无法水合，所有交互失效。
+- 典型症状：登录/注册点提交没反应也不跳转，服务端日志里**没有** `POST /api/auth/login`，只有一条 `GET /login?`（带空问号）——那是 JS 没接管时浏览器做的原生表单提交。同时启动日志里有 `Blocked cross-origin request to Next.js dev resource`。
+- `next.config.ts` 里已配好，默认放行本机 IP 与两个域名，可用 `ALLOWED_DEV_ORIGINS`（逗号分隔）覆盖。该选项只影响 `next dev`。
+- 排查这类"页面能开但点不动"的问题，先看 dev 日志有没有 `Blocked cross-origin`，再看交互请求是否真的发出，比读前端代码快得多。
+- 登录成功后用 `window.location.replace()` 整页跳转而不是 `router.replace()`：目标页可能是读 cookie 的服务端组件（`/admin`），RSC 客户端导航可能命中旧路由缓存而拿不到刚写入的会话。
+
 **已知隐患：图床永久目录**
 - `.next/standalone/server.js` 会 `process.chdir(__dirname)`，而 service 只设置了 `UPLOAD_TMP_DIR`，没设 `UPLOAD_PERMANENT_DIR`，所以图床永久图实际落在 `.next/standalone/public/images/permanent/`，不在项目根的 `public/images/permanent/`。
 - `next build` 默认 `cleanDistDir: true`，会清空 `.next/`，**重新 build 会把已上传的永久图一起删掉**。要保住这些图，部署前先把 `.next/standalone/public/images/permanent/` 备份出来；根治办法是在 `override.conf` 里加 `Environment=UPLOAD_PERMANENT_DIR=/root/projects/image-generate/public/images/permanent`，然后 `daemon-reload` + `restart`，并把旧文件挪过去。

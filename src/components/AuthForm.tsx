@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { Alert, Button, Form, Input } from "antd";
 
 type Mode = "login" | "register";
@@ -20,7 +20,6 @@ function sanitizeNext(raw: string | null): string {
 }
 
 export function AuthForm({ mode }: { mode: Mode }) {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const next = sanitizeNext(searchParams.get("next"));
   const nextQuery = next === "/" ? "" : `?next=${encodeURIComponent(next)}`;
@@ -41,13 +40,15 @@ export function AuthForm({ mode }: { mode: Mode }) {
       const json = (await res.json().catch(() => ({}))) as { error?: string };
       if (!res.ok) {
         setError(json.error ?? `请求失败 (${res.status})`);
+        setSubmitting(false);
         return;
       }
-      router.replace(next);
-      router.refresh();
+      // 整页导航而非客户端路由：目标页可能是读 cookie 的服务端组件（如 /admin），
+      // 走 RSC 导航有可能命中旧的路由缓存，拿不到刚写入的会话。
+      // 不复位 submitting：保持按钮 loading 直到页面被替换。
+      window.location.replace(next);
     } catch (err) {
       setError(err instanceof Error ? err.message : "网络错误");
-    } finally {
       setSubmitting(false);
     }
   }
