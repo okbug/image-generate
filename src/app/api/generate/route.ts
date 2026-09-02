@@ -31,6 +31,7 @@ export async function POST(req: Request) {
     model: body.model ?? "gpt-image-2",
     prompt,
     size: body.size ?? "1792x1024",
+    quality: body.quality ?? "standard",
     response_format: "b64_json" as const,
     n: Math.min(Math.max(body.n ?? 1, 1), 4),
   };

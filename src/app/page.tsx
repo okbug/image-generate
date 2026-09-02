@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
-import { Select } from "antd";
+import { Image, Select, Upload, type UploadFile, type UploadProps } from "antd";
+import { ClipboardPaste, ImagePlus, UploadCloud, X } from "lucide-react";
 
 import { CustomApiModal } from "@/components/CustomApiModal";
 import { useCustomApi } from "@/lib/use-custom-api";
@@ -17,6 +18,8 @@ import {
 } from "@/types/images";
 
 const SIZE_OPTIONS = [
+  { label: "3840×2160 · 4K横向", value: "3840x2160" },
+  { label: "2160×3840 · 4K纵向", value: "2160x3840" },
   { label: "1792×1024 · 横向", value: "1792x1024" },
   { label: "1024×1792 · 纵向", value: "1024x1792" },
   { label: "1024×1024 · 方形", value: "1024x1024" },
@@ -24,7 +27,12 @@ const SIZE_OPTIONS = [
 ];
 
 const CUSTOM_SIZE_MIN = 256;
-const CUSTOM_SIZE_MAX = 2048;
+const CUSTOM_SIZE_MAX = 4096;
+
+const QUALITY_OPTIONS = [
+  { label: "标准", value: "standard" },
+  { label: "高清", value: "hd" },
+];
 
 const PROMPT_PRESETS = [
   "黄昏海边的玻璃小屋，落地窗映着粉橙色晚霞，宫崎骏风格水彩",
@@ -34,6 +42,9 @@ const PROMPT_PRESETS = [
 ];
 
 const EDIT_DEFAULT_PROMPT = "提升画面清晰度与细节，让色彩更鲜明、画面更锐利";
+const MAX_UPLOAD_COUNT = 10;
+const UPLOAD_ACCEPT = "image/png,image/jpeg,image/webp";
+const MAX_UPLOAD_SIZE = 10 * 1024 * 1024;
 
 type RenderedItem = {
   src: string;
@@ -62,9 +73,11 @@ const IMAGE_SOURCE_OPTIONS: Array<{ value: ImageSource; label: string }> = [
 ];
 
 type UploadedImage = {
+  uid: string;
   url: string;
   fileName: string;
   previewSrc: string;
+  name: string;
 };
 
 export default function Home() {
@@ -73,15 +86,17 @@ export default function Home() {
   const [externalUrl, setExternalUrl] = useState("");
   const [prompt, setPrompt] = useState(PROMPT_PRESETS[0]);
   const [size, setSize] = useState(SIZE_OPTIONS[0].value);
+  const [quality, setQuality] = useState(QUALITY_OPTIONS[0].value);
   const [customWidth, setCustomWidth] = useState(1024);
   const [customHeight, setCustomHeight] = useState(1024);
   const [loading, setLoading] = useState(false);
   const [optimizing, setOptimizing] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const [uploaded, setUploaded] = useState<UploadedImage | null>(null);
+  const [uploadedImages, setUploadedImages] = useState<UploadedImage[]>([]);
+  const [uploadFileList, setUploadFileList] = useState<UploadFile[]>([]);
+  const uploading = uploadFileList.some((file) => file.status === "uploading");
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<ImagesGenerationsResponse | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const uploadedImagesRef = useRef<UploadedImage[]>([]);
 
   const { settings, save: saveCustomApi, buildHeaders, active: customApiActive } =
     useCustomApi();
@@ -114,7 +129,7 @@ export default function Home() {
       const res = await fetch("/api/generate", {
         method: "POST",
         headers: buildHeaders({ "Content-Type": "application/json" }),
-        body: JSON.stringify({ prompt, size: resolveSize() }),
+        body: JSON.stringify({ prompt, size: resolveSize(), quality }),
       });
 
       const json = (await res.json()) as GenerateApiResult;
@@ -163,7 +178,7 @@ export default function Home() {
     }
   }
 
-  async function deleteRemoteFile(fileName: string) {
+  const deleteRemoteFile = useCallback(async (fileName: string) => {
     try {
       await fetch(`/api/upload?name=${encodeURIComponent(fileName)}`, {
         method: "DELETE",
@@ -171,18 +186,83 @@ export default function Home() {
     } catch {
       // 删除失败不阻塞主流程
     }
+  }, []);
+
+  function releaseUploadedImage(image: UploadedImage) {
+    URL.revokeObjectURL(image.previewSrc);
+    void deleteRemoteFile(image.fileName);
   }
 
-  async function handleUpload(file: File) {
-    if (uploading || loading) return;
-    setUploading(true);
-    setError(null);
-    // 替换前先清理旧的
-    if (uploaded) {
-      URL.revokeObjectURL(uploaded.previewSrc);
-      void deleteRemoteFile(uploaded.fileName);
-      setUploaded(null);
+  const clearUploadedImages = useCallback(() => {
+    setUploadedImages((current) => {
+      current.forEach((image) => {
+        URL.revokeObjectURL(image.previewSrc);
+        void deleteRemoteFile(image.fileName);
+      });
+      return [];
+    });
+    setUploadFileList([]);
+  }, [deleteRemoteFile]);
+
+  useEffect(() => {
+    uploadedImagesRef.current = uploadedImages;
+  }, [uploadedImages]);
+
+  useEffect(
+    () => () => {
+      uploadedImagesRef.current.forEach((image) => {
+        URL.revokeObjectURL(image.previewSrc);
+        void deleteRemoteFile(image.fileName);
+      });
+    },
+    [deleteRemoteFile],
+  );
+
+  function validateUploadFile(file: File): string | null {
+    if (!UPLOAD_ACCEPT.split(",").includes(file.type)) {
+      return "仅支持 PNG / JPG / WebP";
     }
+    if (file.size > MAX_UPLOAD_SIZE) {
+      return "图片不能超过 10MB";
+    }
+    return null;
+  }
+
+  function parseExternalUrls(value: string): string[] {
+    return Array.from(
+      new Set(
+        value
+          .split(/[\n,，]+/)
+          .map((url) => url.trim())
+          .filter(Boolean),
+      ),
+    );
+  }
+
+  const parsedExternalUrls = parseExternalUrls(externalUrl);
+
+  function validateExternalUrls(urls: string[]): string | null {
+    if (urls.length === 0) return "请填写图片 URL";
+    if (urls.length > MAX_UPLOAD_COUNT) {
+      return `最多只能填写 ${MAX_UPLOAD_COUNT} 个图片 URL`;
+    }
+    if (urls.some((url) => !/^https?:\/\//i.test(url))) {
+      return "每个 URL 都需以 http(s):// 开头";
+    }
+    return null;
+  }
+
+  async function uploadReferenceImage(file: File, uid: string): Promise<boolean> {
+    if (loading) return false;
+    const validationError = validateUploadFile(file);
+    if (validationError) {
+      setError(validationError);
+      setUploadFileList((current) =>
+        current.filter((item) => item.uid !== uid),
+      );
+      return false;
+    }
+    setError(null);
     try {
       const fd = new FormData();
       fd.append("file", file);
@@ -194,62 +274,116 @@ export default function Home() {
       };
       if (!res.ok || !json.url || !json.fileName) {
         setError(json.error ?? `上传失败 (${res.status})`);
-        return;
+        setUploadFileList((current) =>
+          current.filter((item) => item.uid !== uid),
+        );
+        return false;
       }
-      setUploaded({
+      const uploadedImage: UploadedImage = {
+        uid,
         url: json.url,
         fileName: json.fileName,
         previewSrc: URL.createObjectURL(file),
-      });
+        name: file.name,
+      };
+      setUploadedImages((current) => [...current, uploadedImage]);
+      setUploadFileList((current) =>
+        current.map((item) =>
+          item.uid === uid
+            ? {
+                ...item,
+                status: "done",
+                percent: 100,
+                url: json.url,
+                thumbUrl: uploadedImage.previewSrc,
+                response: json,
+              }
+            : item,
+        ),
+      );
+      return true;
     } catch (err) {
       setError(err instanceof Error ? err.message : "未知错误");
-    } finally {
-      setUploading(false);
+      setUploadFileList((current) =>
+        current.filter((item) => item.uid !== uid),
+      );
+      return false;
     }
   }
 
-  async function handleClearUpload() {
-    if (!uploaded) return;
-    URL.revokeObjectURL(uploaded.previewSrc);
-    const fileName = uploaded.fileName;
-    setUploaded(null);
-    if (fileInputRef.current) fileInputRef.current.value = "";
-    void deleteRemoteFile(fileName);
+  function handleUploadChange(nextFileList: UploadFile[]) {
+    setUploadFileList(nextFileList.slice(0, MAX_UPLOAD_COUNT));
   }
+
+  async function handleUploadRemove(file: UploadFile) {
+    setUploadedImages((current) => {
+      const removed = current.find((image) => image.uid === file.uid);
+      if (removed) releaseUploadedImage(removed);
+      return current.filter((image) => image.uid !== file.uid);
+    });
+    return true;
+  }
+
+  const uploadProps: UploadProps = {
+    accept: UPLOAD_ACCEPT,
+    multiple: true,
+    maxCount: MAX_UPLOAD_COUNT,
+    fileList: uploadFileList,
+    showUploadList: false,
+    disabled: loading || uploadedImages.length >= MAX_UPLOAD_COUNT,
+    pastable: true,
+    beforeUpload: (file, fileList) => {
+      const availableSlots = MAX_UPLOAD_COUNT - uploadFileList.length;
+      const nextIndex = fileList.findIndex((item) => item.uid === file.uid);
+      if (availableSlots <= 0 || nextIndex >= availableSlots) {
+        setError(`最多只能上传 ${MAX_UPLOAD_COUNT} 张参考图片`);
+        return Upload.LIST_IGNORE;
+      }
+      const validationError = validateUploadFile(file);
+      if (validationError) {
+        setError(validationError);
+        return Upload.LIST_IGNORE;
+      }
+      return true;
+    },
+    onChange: ({ fileList }) => handleUploadChange(fileList),
+    onRemove: handleUploadRemove,
+    customRequest: ({ file, onSuccess }) => {
+      const imageFile = file as File & { uid?: string };
+      const uid = imageFile.uid ?? `${Date.now()}-${imageFile.name}`;
+      void uploadReferenceImage(imageFile, uid).then((ok) => {
+        if (ok) onSuccess?.({ ok: true }, imageFile);
+      });
+    },
+  };
 
   async function handleEdit(e: React.FormEvent) {
     e.preventDefault();
     if (!prompt.trim() || loading) return;
 
-    let imageUrl: string;
+    let imageUrls: string[];
     if (imageSource === ImageSource.Url) {
-      const trimmed = externalUrl.trim();
-      if (!trimmed) {
-        setError("请填写图片 URL");
+      const validationError = validateExternalUrls(parsedExternalUrls);
+      if (validationError) {
+        setError(validationError);
         return;
       }
-      if (!/^https?:\/\//i.test(trimmed)) {
-        setError("URL 需以 http(s):// 开头");
-        return;
-      }
-      imageUrl = trimmed;
+      imageUrls = parsedExternalUrls;
     } else {
-      if (!uploaded) {
-        setError("请先上传一张参考图片");
+      if (uploadedImages.length === 0) {
+        setError("请先上传参考图片");
         return;
       }
-      imageUrl = uploaded.url;
+      if (uploading) {
+        setError("图片仍在上传，请稍后再编辑");
+        return;
+      }
+      imageUrls = uploadedImages.map((image) => image.url);
     }
 
     setLoading(true);
     setError(null);
     setResult(null);
-
-    // 仅当来源是 upload 时才需要清理本地临时图
-    const cleanupFileName =
-      imageSource === ImageSource.Upload ? uploaded?.fileName : null;
-    const cleanupPreview =
-      imageSource === ImageSource.Upload ? uploaded?.previewSrc : null;
 
     try {
       const res = await fetch("/api/edit", {
@@ -257,8 +391,9 @@ export default function Home() {
         headers: buildHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify({
           prompt,
-          imageUrl,
+          imageUrls,
           size: resolveSize(),
+          quality,
         }),
       });
       const json = (await res.json()) as GenerateApiResult;
@@ -277,12 +412,6 @@ export default function Home() {
       setError(err instanceof Error ? err.message : "未知错误");
     } finally {
       setLoading(false);
-      if (cleanupFileName) {
-        if (cleanupPreview) URL.revokeObjectURL(cleanupPreview);
-        void deleteRemoteFile(cleanupFileName);
-        setUploaded(null);
-        if (fileInputRef.current) fileInputRef.current.value = "";
-      }
     }
   }
 
@@ -296,7 +425,7 @@ export default function Home() {
     setMode(next);
     setError(null);
     // 切换模式时清理已上传图（避免遗留）
-    if (uploaded) void handleClearUpload();
+    if (uploadedImages.length > 0) clearUploadedImages();
     // 模式切换时按上下文回填默认 prompt（用户已改过则保留）
     if (next === Mode.Edit && PROMPT_PRESETS.includes(prompt)) {
       setPrompt(EDIT_DEFAULT_PROMPT);
@@ -342,7 +471,7 @@ export default function Home() {
             </h1>
             <p className="max-w-xl text-sm leading-relaxed text-zinc-600 dark:text-zinc-400 md:text-base">
               {mode === Mode.Edit
-                ? "上传一张参考图，描述想要的修改，由模型重绘。"
+                ? "上传最多三张参考图，描述想要的修改，由模型重绘。"
                 : "把你脑中的画面写下来，几秒后就能拿到一张高清成片。"}
             </p>
           </div>
@@ -403,8 +532,11 @@ export default function Home() {
                         setImageSource(opt.value);
                         setError(null);
                         // 切到 URL 模式时清掉已上传的临时图
-                        if (opt.value === ImageSource.Url && uploaded) {
-                          void handleClearUpload();
+                        if (
+                          opt.value === ImageSource.Url &&
+                          uploadedImages.length > 0
+                        ) {
+                          clearUploadedImages();
                         }
                       }}
                       disabled={loading || uploading}
@@ -427,103 +559,143 @@ export default function Home() {
               </div>
 
               {imageSource === ImageSource.Upload ? (
-                <>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/png,image/jpeg,image/webp"
-                    onChange={(e) => {
-                      const f = e.target.files?.[0];
-                      if (f) void handleUpload(f);
-                    }}
-                    className="hidden"
-                  />
-                  {uploaded ? (
-                    <div className="flex flex-col gap-3 rounded-xl border border-zinc-200 bg-white/70 p-3 dark:border-zinc-700 dark:bg-zinc-900/50 sm:flex-row sm:items-center">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={uploaded.previewSrc}
-                        alt="已上传参考图"
-                        className="h-32 w-full rounded-lg object-cover sm:h-20 sm:w-28"
-                      />
-                      <div className="flex flex-1 flex-col gap-1 text-xs text-zinc-600 dark:text-zinc-400">
-                        <span className="font-medium text-zinc-800 dark:text-zinc-200">
-                          已上传
-                        </span>
-                        <span className="break-all">{uploaded.fileName}</span>
-                        <span className="truncate text-zinc-500 dark:text-zinc-500">
-                          {uploaded.url}
-                        </span>
-                      </div>
-                      <div className="flex shrink-0 gap-2">
-                        <button
-                          type="button"
-                          onClick={() => fileInputRef.current?.click()}
-                          disabled={uploading || loading}
-                          className="inline-flex h-9 items-center rounded-lg border border-zinc-200 bg-white px-3 text-xs font-medium text-zinc-700 transition active:scale-95 hover:bg-zinc-50 disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
-                        >
-                          替换
-                        </button>
-                        <button
-                          type="button"
-                          onClick={handleClearUpload}
-                          disabled={uploading || loading}
-                          className="inline-flex h-9 items-center rounded-lg border border-red-200 bg-red-50 px-3 text-xs font-medium text-red-700 transition active:scale-95 hover:bg-red-100 disabled:opacity-50 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300 dark:hover:bg-red-950/60"
-                        >
-                          移除
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => fileInputRef.current?.click()}
-                      disabled={uploading}
-                      className="flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-zinc-300 bg-white/40 px-4 py-8 text-sm text-zinc-600 transition hover:border-indigo-300 hover:bg-indigo-50/40 hover:text-indigo-700 disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-900/40 dark:text-zinc-400 dark:hover:border-indigo-500/60 dark:hover:bg-indigo-500/10 dark:hover:text-indigo-300"
-                    >
+                <div className="flex flex-col gap-3">
+                  <Upload.Dragger {...uploadProps} className="reference-upload">
+                    <div className="flex flex-col items-center gap-2 px-4 py-3 text-center">
                       {uploading ? (
-                        <>
-                          <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                          上传中…
-                        </>
+                        <span className="h-5 w-5 animate-spin rounded-full border-2 border-indigo-500 border-t-transparent" />
                       ) : (
-                        <>
-                          <span className="text-2xl">📤</span>
-                          <span className="font-medium">点击上传参考图片</span>
-                          <span className="text-xs text-zinc-500 dark:text-zinc-500">
-                            支持 PNG / JPG / WebP，最大 10MB
-                          </span>
-                        </>
+                        <UploadCloud className="h-7 w-7 text-indigo-500" />
                       )}
-                    </button>
+                      <span className="text-sm font-medium text-zinc-800 dark:text-zinc-100">
+                        点击、拖拽或粘贴参考图片
+                      </span>
+                      <span className="text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">
+                        支持 PNG / JPG / WebP，单张最大 10MB，最多 {MAX_UPLOAD_COUNT} 张
+                      </span>
+                      <span className="inline-flex items-center gap-1 text-[11px] text-zinc-500 dark:text-zinc-500">
+                        <ClipboardPaste className="h-3.5 w-3.5" />
+                        复制图片后在此区域按 Ctrl / Cmd + V
+                      </span>
+                    </div>
+                  </Upload.Dragger>
+
+                  {uploadedImages.length > 0 && (
+                    <Image.PreviewGroup>
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                        {uploadedImages.map((image, idx) => (
+                          <div
+                            key={image.uid}
+                            className="group relative overflow-hidden rounded-xl border border-zinc-200 bg-white/70 dark:border-zinc-700 dark:bg-zinc-900/50"
+                          >
+                            <Image
+                              src={image.previewSrc}
+                              alt={`已上传参考图 ${idx + 1}`}
+                              className="!h-36 !w-full object-cover"
+                              preview={{ mask: "预览" }}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setUploadFileList((current) =>
+                                  current.filter(
+                                    (file) => file.uid !== image.uid,
+                                  ),
+                                );
+                                setUploadedImages((current) => {
+                                  const removed = current.find(
+                                    (item) => item.uid === image.uid,
+                                  );
+                                  if (removed) releaseUploadedImage(removed);
+                                  return current.filter(
+                                    (item) => item.uid !== image.uid,
+                                  );
+                                });
+                              }}
+                              disabled={loading}
+                              title="移除图片"
+                              className="absolute top-2 right-2 inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/70 bg-zinc-950/70 text-white shadow-sm transition hover:bg-red-600 disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                              <X className="h-4 w-4" />
+                            </button>
+                            <div className="flex flex-col gap-1 px-3 py-2 text-xs">
+                              <span className="flex items-center gap-1.5 font-medium text-zinc-800 dark:text-zinc-200">
+                                <ImagePlus className="h-3.5 w-3.5" />
+                                参考图 {idx + 1}
+                              </span>
+                              <span className="truncate text-zinc-500 dark:text-zinc-500">
+                                {image.name || image.fileName}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </Image.PreviewGroup>
                   )}
-                </>
+
+                  <p className="text-[11px] text-zinc-500 dark:text-zinc-500">
+                    已上传 {uploadedImages.length}/{MAX_UPLOAD_COUNT}
+                    {uploading ? "，仍有图片上传中" : ""}
+                  </p>
+                </div>
               ) : (
                 <div className="flex flex-col gap-2">
-                  <input
-                    type="url"
+                  <textarea
                     value={externalUrl}
                     onChange={(e) => setExternalUrl(e.target.value)}
-                    placeholder="https://example.com/your-image.png"
-                    className="h-11 w-full rounded-xl border border-zinc-200 bg-white/80 px-3.5 text-sm text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-indigo-400 focus:ring-4 focus:ring-indigo-400/10 dark:border-zinc-700 dark:bg-zinc-900/60 dark:text-zinc-100 dark:placeholder:text-zinc-500"
+                    rows={3}
+                    placeholder="https://example.com/a.png, https://example.com/b.webp"
+                    className="w-full resize-y rounded-xl border border-zinc-200 bg-white/80 px-3.5 py-3 text-sm leading-relaxed text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-indigo-400 focus:ring-4 focus:ring-indigo-400/10 dark:border-zinc-700 dark:bg-zinc-900/60 dark:text-zinc-100 dark:placeholder:text-zinc-500"
                   />
-                  {externalUrl.trim() && /^https?:\/\//i.test(externalUrl.trim()) && (
-                    <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white/70 dark:border-zinc-700 dark:bg-zinc-900/50">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={externalUrl.trim()}
-                        alt="URL 预览"
-                        className="h-40 w-full object-contain"
-                        onError={(e) => {
-                          (e.currentTarget as HTMLImageElement).style.display =
-                            "none";
-                        }}
-                      />
+                  <div className="flex flex-col gap-1 text-[11px] text-zinc-500 dark:text-zinc-500">
+                    <p>
+                      可一次填写最多 {MAX_UPLOAD_COUNT} 个图片 URL，用英文逗号、中文逗号或换行分隔。
+                    </p>
+                    <p>
+                      URL 必须公网可达，模型服务端将通过地址拉取图片，本网站不会暂存它。
+                    </p>
+                  </div>
+                  {parsedExternalUrls.length > 0 && (
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-center justify-between gap-2 text-[11px] text-zinc-500 dark:text-zinc-500">
+                        <span>
+                          已识别 {parsedExternalUrls.length}/{MAX_UPLOAD_COUNT} 个 URL
+                        </span>
+                        {parsedExternalUrls.length > MAX_UPLOAD_COUNT && (
+                          <span className="font-medium text-red-600 dark:text-red-300">
+                            超出上限，请删除多余 URL
+                          </span>
+                        )}
+                      </div>
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                        {parsedExternalUrls.slice(0, MAX_UPLOAD_COUNT).map((url, idx) => (
+                          <div
+                            key={url}
+                            className="overflow-hidden rounded-xl border border-zinc-200 bg-white/70 dark:border-zinc-700 dark:bg-zinc-900/50"
+                          >
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={url}
+                              alt={`URL 参考图 ${idx + 1}`}
+                              className="h-36 w-full object-cover"
+                              onError={(e) => {
+                                (e.currentTarget as HTMLImageElement).style.display =
+                                  "none";
+                              }}
+                            />
+                            <div className="flex flex-col gap-1 px-3 py-2 text-xs">
+                              <span className="font-medium text-zinc-800 dark:text-zinc-200">
+                                URL 参考图 {idx + 1}
+                              </span>
+                              <span className="truncate text-zinc-500 dark:text-zinc-500">
+                                {url}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   )}
-                  <p className="text-[11px] text-zinc-500 dark:text-zinc-500">
-                    URL 必须公网可达，模型服务端将通过该地址拉取图片，本网站不会暂存它。
-                  </p>
                 </div>
               )}
             </div>
@@ -595,6 +767,20 @@ export default function Home() {
               />
             </div>
 
+            <div className="flex flex-col gap-2">
+              <span className="text-sm font-medium text-zinc-800 dark:text-zinc-200">
+                质量
+              </span>
+              <Select
+                value={quality}
+                onChange={setQuality}
+                size="large"
+                options={QUALITY_OPTIONS}
+                placeholder="选择质量"
+                className="w-full"
+              />
+            </div>
+
             {size === "custom" && (
               <div className="grid grid-cols-2 gap-3 rounded-xl border border-dashed border-indigo-200 bg-indigo-50/40 p-3 dark:border-indigo-500/30 dark:bg-indigo-500/5">
                 <label className="flex flex-col gap-1.5">
@@ -652,10 +838,10 @@ export default function Home() {
                 !prompt.trim() ||
                 (mode === Mode.Edit &&
                   imageSource === ImageSource.Upload &&
-                  !uploaded) ||
+                  uploadedImages.length === 0) ||
                 (mode === Mode.Edit &&
                   imageSource === ImageSource.Url &&
-                  !externalUrl.trim())
+                  parsedExternalUrls.length === 0)
               }
               className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 px-6 text-sm font-semibold text-white shadow-lg shadow-purple-500/20 transition active:scale-[0.98] hover:shadow-purple-500/40 disabled:cursor-not-allowed disabled:opacity-50 sm:h-11 sm:w-auto"
             >

@@ -1,20 +1,21 @@
 import { NextResponse } from "next/server";
 import { readdir, unlink } from "node:fs/promises";
-import path from "node:path";
+import {
+  UPLOAD_EXPIRY_MS,
+  UPLOAD_NAME_RE,
+  getUploadTmpDir,
+  resolveUploadFilePath,
+} from "@/lib/upload-store";
 
 export const runtime = "nodejs";
-
-const TMP_DIR = path.join(process.cwd(), "public", "images", "tmp");
-const NAME_RE = /^(\d{13})-[a-f0-9-]{36}\.(png|jpe?g|webp)$/i;
-const EXPIRY_MS = 30 * 60 * 1000;
 
 async function sweep() {
   let entries: string[] = [];
   try {
-    entries = await readdir(TMP_DIR);
+    entries = await readdir(/*turbopackIgnore: true*/ getUploadTmpDir());
   } catch (err) {
     if ((err as NodeJS.ErrnoException).code === "ENOENT") {
-      return { deleted: 0, scanned: 0, expiryMs: EXPIRY_MS };
+      return { deleted: 0, scanned: 0, expiryMs: UPLOAD_EXPIRY_MS };
     }
     throw err;
   }
@@ -25,13 +26,15 @@ async function sweep() {
 
   await Promise.all(
     entries.map(async (name) => {
-      const m = name.match(NAME_RE);
+      const m = name.match(UPLOAD_NAME_RE);
       if (!m) return;
       scanned += 1;
       const ts = Number.parseInt(m[1], 10);
-      if (!Number.isFinite(ts) || now - ts < EXPIRY_MS) return;
+      if (!Number.isFinite(ts) || now - ts < UPLOAD_EXPIRY_MS) return;
+      const filePath = resolveUploadFilePath(name);
+      if (!filePath) return;
       try {
-        await unlink(path.join(TMP_DIR, name));
+        await unlink(/*turbopackIgnore: true*/ filePath);
         deleted += 1;
       } catch {
         // 文件并发被删除等情况忽略
@@ -39,7 +42,7 @@ async function sweep() {
     }),
   );
 
-  return { deleted, scanned, expiryMs: EXPIRY_MS };
+  return { deleted, scanned, expiryMs: UPLOAD_EXPIRY_MS };
 }
 
 export async function POST() {

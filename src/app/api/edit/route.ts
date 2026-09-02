@@ -7,7 +7,9 @@ export const runtime = "nodejs";
 type EditBody = {
   prompt?: string;
   imageUrl?: string;
+  imageUrls?: string[];
   size?: string;
+  quality?: string;
 };
 
 export async function POST(req: Request) {
@@ -28,20 +30,39 @@ export async function POST(req: Request) {
   }
 
   const prompt = body.prompt?.trim();
-  const imageUrl = body.imageUrl?.trim();
+  const imageUrls = Array.from(
+    new Set(
+      (Array.isArray(body.imageUrls) ? body.imageUrls : [body.imageUrl])
+        .map((url) => (typeof url === "string" ? url.trim() : ""))
+        .filter(Boolean),
+    ),
+  );
   if (!prompt) {
     return NextResponse.json({ error: "prompt 不能为空" }, { status: 400 });
   }
-  if (!imageUrl) {
-    return NextResponse.json({ error: "imageUrl 不能为空" }, { status: 400 });
+  if (imageUrls.length === 0) {
+    return NextResponse.json({ error: "imageUrls 不能为空" }, { status: 400 });
+  }
+  if (imageUrls.length > 10) {
+    return NextResponse.json(
+      { error: "最多支持 10 张参考图片" },
+      { status: 400 },
+    );
+  }
+  if (imageUrls.some((url) => !/^https?:\/\//i.test(url))) {
+    return NextResponse.json(
+      { error: "图片 URL 需以 http(s):// 开头" },
+      { status: 400 },
+    );
   }
 
   const payload = {
     model: "gpt-image-2",
     prompt,
-    image: imageUrl,
+    images: imageUrls.map((imageUrl) => ({ image_url: imageUrl })),
     size: body.size ?? "1024x1024",
-    response_format: "b64_json" as const,
+    quality: body.quality ?? "standard",
+    output_format: "png" as const,
     n: 1,
   };
 

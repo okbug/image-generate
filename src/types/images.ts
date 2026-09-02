@@ -34,6 +34,7 @@ export type GenerateRequestBody = {
   prompt: string;
   model?: string;
   size?: string;
+  quality?: string;
   n?: number;
 };
 

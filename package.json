@@ -3,9 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev -p 3005",
     "build": "next build",
-    "start": "next start",
+    "postbuild": "cp -R public .next/standalone/ && mkdir -p .next/standalone/.next && cp -R .next/static .next/standalone/.next/",
+    "start": "UPLOAD_TMP_DIR=$PWD/public/images/tmp HOSTNAME=0.0.0.0 PORT=3005 node .next/standalone/server.js",
     "lint": "eslint"
   },
   "dependencies": {

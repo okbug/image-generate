@@ -1,14 +1,20 @@
 import { NextResponse } from "next/server";
 import { mkdir, unlink, writeFile } from "node:fs/promises";
-import path from "node:path";
 import crypto from "node:crypto";
+import {
+  UPLOAD_TMP_ROUTE,
+  UPLOAD_PERMANENT_ROUTE,
+  getUploadTmpDir,
+  getUploadPermanentDir,
+  resolveUploadFilePath,
+  resolvePermanentFilePath,
+  IMAGEBED_PASSWORD,
+} from "@/lib/upload-store";
 
 export const runtime = "nodejs";
 
-const TMP_DIR = path.join(process.cwd(), "public", "images", "tmp");
 const ALLOWED_MIME = new Set(["image/png", "image/jpeg", "image/webp"]);
 const MAX_SIZE = 10 * 1024 * 1024;
-const SAFE_NAME = /^\d{13}-[a-f0-9-]{36}\.(png|jpe?g|webp)$/i;
 
 function extFromMime(mime: string): string {
   if (mime === "image/png") return "png";
@@ -42,27 +48,68 @@ export async function POST(req: Request) {
     );
   }
 
-  await mkdir(TMP_DIR, { recursive: true });
+  // 检查是否为图床模式（需要密码）
+  const password = form.get("password");
+  const isPermanentMode = password === IMAGEBED_PASSWORD;
+
   const ext = extFromMime(file.type);
   const fileName = `${Date.now()}-${crypto.randomUUID()}.${ext}`;
-  const filePath = path.join(TMP_DIR, fileName);
-  const buffer = Buffer.from(await file.arrayBuffer());
-  await writeFile(filePath, buffer);
 
-  const origin = req.headers.get("origin") ?? new URL(req.url).origin;
-  const url = `${origin}/images/tmp/${fileName}`;
+  if (isPermanentMode) {
+    // 永久存储模式
+    await mkdir(getUploadPermanentDir(), { recursive: true });
+    const filePath = resolvePermanentFilePath(fileName);
+    if (!filePath) {
+      return NextResponse.json({ error: "文件名生成失败" }, { status: 500 });
+    }
+    const buffer = Buffer.from(await file.arrayBuffer());
+    await writeFile(/*turbopackIgnore: true*/ filePath, buffer);
 
-  return NextResponse.json({ fileName, url, size: file.size, mime: file.type });
+    const origin = req.headers.get("origin") ?? new URL(req.url).origin;
+    const url = `${origin}${UPLOAD_PERMANENT_ROUTE}/${fileName}`;
+
+    return NextResponse.json({
+      fileName,
+      url,
+      size: file.size,
+      mime: file.type,
+      permanent: true
+    });
+  } else {
+    // 临时存储模式（原有功能）
+    if (password) {
+      return NextResponse.json({ error: "密码错误" }, { status: 401 });
+    }
+
+    await mkdir(getUploadTmpDir(), { recursive: true });
+    const filePath = resolveUploadFilePath(fileName);
+    if (!filePath) {
+      return NextResponse.json({ error: "文件名生成失败" }, { status: 500 });
+    }
+    const buffer = Buffer.from(await file.arrayBuffer());
+    await writeFile(/*turbopackIgnore: true*/ filePath, buffer);
+
+    const origin = req.headers.get("origin") ?? new URL(req.url).origin;
+    const url = `${origin}${UPLOAD_TMP_ROUTE}/${fileName}`;
+
+    return NextResponse.json({
+      fileName,
+      url,
+      size: file.size,
+      mime: file.type,
+      permanent: false
+    });
+  }
 }
 
 export async function DELETE(req: Request) {
   const fileName = new URL(req.url).searchParams.get("name");
-  if (!fileName || !SAFE_NAME.test(fileName)) {
+  const filePath = fileName ? resolveUploadFilePath(fileName) : null;
+  if (!filePath) {
     return NextResponse.json({ error: "非法文件名" }, { status: 400 });
   }
-  const filePath = path.join(TMP_DIR, fileName);
   try {
-    await unlink(filePath);
+    await unlink(/*turbopackIgnore: true*/ filePath);
     return NextResponse.json({ ok: true });
   } catch (err) {
     if ((err as NodeJS.ErrnoException).code === "ENOENT") {
