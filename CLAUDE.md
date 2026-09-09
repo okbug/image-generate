@@ -8,7 +8,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 「AI 图片工坊」：Next.js 16（App Router + Turbopack）+ React 19 + antd 6 + Tailwind 4 的单页应用。
 浏览器只跟本项目的 API 路由通信，路由再把请求转发到一个 OpenAI 兼容的上游服务
-（图片生成/编辑用 `gpt-image-2`，提示词优化用 `gpt-5.5`）。另有 `/imagebed` 图床页（密码保护，永久存图）。
+（生图/改图默认 `gpt-image-2`，提示词优化默认 `gpt-5.5`）。另有 `/imagebed` 图床页（密码保护，永久存图）。
 
 ## 常用命令
 
@@ -38,6 +38,14 @@ npm start        # 手动起 standalone —— 本机不要用，生产由 syste
 - `/api/upload` POST（表单带 `password` 且等于 `IMAGEBED_PASSWORD` 时写永久目录，否则写临时目录）/ DELETE（只删临时目录）
 - `/api/cleanup` 删除临时目录中 30 分钟以前的文件（按文件名里的时间戳判断）
 - 上游报错统一原样透传 `{ error, detail }`，前端靠 `isGenerateError()` 判别。
+
+**模型选择（`src/lib/models.ts`）**
+- 生图模型三档写死在 `IMAGE_MODEL_OPTIONS`：`gpt-image-2`（默认）/ `gpt-image-2.5-flare`（更快）/ `gpt-image-2.5-sunburst`（更精细），
+  下拉里带一句说明，加档只改这个数组即可（下拉两行说明靠 `globals.css` 里的 `.model-select-popup` 取消 antd 的单行截断）。
+- 前端把选中的 model 放在 `/api/generate`、`/api/edit` 的请求体里；优化提示词的模型由用户在设置弹窗自由填写，
+  存在 localStorage（`CustomApiSettings.optimizeModel`），随 `/api/optimize-prompt` 的 body 发过去。
+- 后端一律走 `resolveImageModel()` / `resolveOptimizeModel()`：空值、非字符串或超长都回落到默认模型，不做白名单校验
+  （用自己 Key 的用户可能有别的模型名）。
 
 **凭证解析（`src/lib/api-credentials.ts`）**
 - 优先级：请求头 `x-image-api-base-url` / `x-image-api-key` → 环境变量 `IMAGE_API_BASE_URL` / `IMAGE_API_KEY`。
