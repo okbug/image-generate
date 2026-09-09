@@ -8,12 +8,15 @@ export type CustomApiSettings = {
   enabled: boolean;
   baseUrl: string;
   apiKey: string;
+  /** 优化提示词用的模型，留空表示用默认的 DEFAULT_OPTIMIZE_MODEL。与上面的凭证开关无关。 */
+  optimizeModel: string;
 };
 
 const EMPTY_SETTINGS: CustomApiSettings = {
   enabled: false,
   baseUrl: "",
   apiKey: "",
+  optimizeModel: "",
 };
 
 const listeners = new Set<() => void>();
@@ -57,6 +60,8 @@ function parseSettings(raw: string | null): CustomApiSettings {
       enabled: Boolean(parsed.enabled),
       baseUrl: typeof parsed.baseUrl === "string" ? parsed.baseUrl : "",
       apiKey: typeof parsed.apiKey === "string" ? parsed.apiKey : "",
+      optimizeModel:
+        typeof parsed.optimizeModel === "string" ? parsed.optimizeModel : "",
     };
   } catch {
     return EMPTY_SETTINGS;

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Button, Drawer, Input, Modal, Switch } from "antd";
 
+import { DEFAULT_OPTIMIZE_MODEL } from "@/lib/models";
 import type { CustomApiSettings } from "@/lib/use-custom-api";
 import { useMediaQuery } from "@/lib/use-media-query";
 
@@ -20,6 +21,8 @@ function FormFields({
   setBaseUrl,
   apiKey,
   setApiKey,
+  optimizeModel,
+  setOptimizeModel,
 }: {
   enabled: boolean;
   setEnabled: (v: boolean) => void;
@@ -27,6 +30,8 @@ function FormFields({
   setBaseUrl: (v: string) => void;
   apiKey: string;
   setApiKey: (v: string) => void;
+  optimizeModel: string;
+  setOptimizeModel: (v: string) => void;
 }) {
   return (
     <div className="flex flex-col gap-4 pt-1">
@@ -85,6 +90,24 @@ function FormFields({
           />
         </label>
       </div>
+
+      <label className="flex flex-col gap-1.5 border-t border-zinc-200/80 pt-4 dark:border-zinc-800">
+        <span className="text-sm font-medium">优化提示词模型</span>
+        <Input
+          value={optimizeModel}
+          onChange={(e) => setOptimizeModel(e.target.value)}
+          placeholder={DEFAULT_OPTIMIZE_MODEL}
+          size="large"
+          autoComplete="off"
+        />
+        <span className="text-[11px] leading-relaxed text-zinc-500 dark:text-zinc-400">
+          点「✨ 优化提示词」时调用的对话模型，留空即用默认的{" "}
+          <code className="rounded bg-zinc-100 px-1 py-0.5 text-[11px] dark:bg-zinc-800">
+            {DEFAULT_OPTIMIZE_MODEL}
+          </code>
+          。这一项和上面的开关无关，用网站默认凭证时也生效（前提是上游支持该模型）。
+        </span>
+      </label>
     </div>
   );
 }
@@ -102,6 +125,7 @@ function CustomApiForm({
   const [enabled, setEnabled] = useState(initial.enabled);
   const [baseUrl, setBaseUrl] = useState(initial.baseUrl);
   const [apiKey, setApiKey] = useState(initial.apiKey);
+  const [optimizeModel, setOptimizeModel] = useState(initial.optimizeModel);
 
   const canSave =
     !enabled || (baseUrl.trim().length > 0 && apiKey.trim().length > 0);
@@ -111,6 +135,7 @@ function CustomApiForm({
       enabled,
       baseUrl: baseUrl.trim(),
       apiKey: apiKey.trim(),
+      optimizeModel: optimizeModel.trim(),
     });
     onClose();
   }
@@ -123,13 +148,15 @@ function CustomApiForm({
       setBaseUrl={setBaseUrl}
       apiKey={apiKey}
       setApiKey={setApiKey}
+      optimizeModel={optimizeModel}
+      setOptimizeModel={setOptimizeModel}
     />
   );
 
   if (isMobile) {
     return (
       <Drawer
-        title="自定义 API 凭证"
+        title="API 与模型设置"
         open
         placement="bottom"
         height="min(640px, 88vh)"
@@ -153,7 +180,7 @@ function CustomApiForm({
 
   return (
     <Modal
-      title="自定义 API 凭证"
+      title="API 与模型设置"
       open
       centered
       width={520}

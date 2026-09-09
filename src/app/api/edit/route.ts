@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { resolveCredentials } from "@/lib/api-credentials";
+import { resolveImageModel } from "@/lib/models";
 
 export const runtime = "nodejs";
 
@@ -8,6 +9,7 @@ type EditBody = {
   prompt?: string;
   imageUrl?: string;
   imageUrls?: string[];
+  model?: string;
   size?: string;
   quality?: string;
 };
@@ -57,7 +59,7 @@ export async function POST(req: Request) {
   }
 
   const payload = {
-    model: "gpt-image-2",
+    model: resolveImageModel(body.model),
     prompt,
     images: imageUrls.map((imageUrl) => ({ image_url: imageUrl })),
     size: body.size ?? "1024x1024",

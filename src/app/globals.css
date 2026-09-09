@@ -185,3 +185,9 @@ body {
     @apply font-sans;
   }
 }
+/* 模型下拉里每一项要显示两行说明，取消 antd 默认的单行截断（多写一层 class 压过 antd 的规则） */
+.model-select-popup .ant-select-item-option .ant-select-item-option-content {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+}

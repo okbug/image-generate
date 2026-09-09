@@ -6,6 +6,12 @@ import { Image, Select, Upload, type UploadFile, type UploadProps } from "antd";
 import { ClipboardPaste, ImagePlus, UploadCloud, X } from "lucide-react";
 
 import { CustomApiModal } from "@/components/CustomApiModal";
+import {
+  DEFAULT_IMAGE_MODEL,
+  IMAGE_MODEL_OPTIONS,
+  type ImageModelOption,
+  findImageModel,
+} from "@/lib/models";
 import { useCustomApi } from "@/lib/use-custom-api";
 import {
   type GenerateApiResult,
@@ -85,6 +91,7 @@ export default function Home() {
   const [imageSource, setImageSource] = useState<ImageSource>(ImageSource.Upload);
   const [externalUrl, setExternalUrl] = useState("");
   const [prompt, setPrompt] = useState(PROMPT_PRESETS[0]);
+  const [model, setModel] = useState(DEFAULT_IMAGE_MODEL);
   const [size, setSize] = useState(SIZE_OPTIONS[0].value);
   const [quality, setQuality] = useState(QUALITY_OPTIONS[0].value);
   const [customWidth, setCustomWidth] = useState(1024);
@@ -129,7 +136,7 @@ export default function Home() {
       const res = await fetch("/api/generate", {
         method: "POST",
         headers: buildHeaders({ "Content-Type": "application/json" }),
-        body: JSON.stringify({ prompt, size: resolveSize(), quality }),
+        body: JSON.stringify({ prompt, model, size: resolveSize(), quality }),
       });
 
       const json = (await res.json()) as GenerateApiResult;
@@ -163,7 +170,7 @@ export default function Home() {
       const res = await fetch("/api/optimize-prompt", {
         method: "POST",
         headers: buildHeaders({ "Content-Type": "application/json" }),
-        body: JSON.stringify({ prompt }),
+        body: JSON.stringify({ prompt, model: settings.optimizeModel }),
       });
       const json = (await res.json()) as { prompt?: string; error?: string };
       if (!res.ok || !json.prompt) {
@@ -392,6 +399,7 @@ export default function Home() {
         body: JSON.stringify({
           prompt,
           imageUrls,
+          model,
           size: resolveSize(),
           quality,
         }),
@@ -437,6 +445,8 @@ export default function Home() {
     }
   }
 
+  const activeModel = findImageModel(model);
+
   const renderedItems: RenderedItem[] = (result?.data ?? []).flatMap(
     (item: ImageItem): RenderedItem[] => {
       const ext = extFromFormat(result?.output_format);
@@ -464,14 +474,14 @@ export default function Home() {
           <div className="flex flex-col items-start gap-2.5 md:gap-3">
             <span className="inline-flex items-center gap-2 rounded-full border border-zinc-200/70 bg-white/60 px-3 py-1 text-[11px] font-medium text-zinc-700 backdrop-blur dark:border-zinc-700/60 dark:bg-zinc-900/50 dark:text-zinc-300 md:text-xs">
               <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
-              模型 gpt-image-2 · {mode === Mode.Edit ? "图像编辑" : "实时生成"}
+              模型 {model} · {mode === Mode.Edit ? "图像编辑" : "实时生成"}
             </span>
             <h1 className="text-3xl font-semibold tracking-tight md:text-5xl">
               <span className="gradient-text">AI 图片工坊</span>
             </h1>
             <p className="max-w-xl text-sm leading-relaxed text-zinc-600 dark:text-zinc-400 md:text-base">
               {mode === Mode.Edit
-                ? "上传最多三张参考图，描述想要的修改，由模型重绘。"
+                ? `上传最多 ${MAX_UPLOAD_COUNT} 张参考图，描述想要的修改，由模型重绘。`
                 : "把你脑中的画面写下来，几秒后就能拿到一张高清成片。"}
             </p>
           </div>
@@ -496,7 +506,7 @@ export default function Home() {
             <button
               type="button"
               onClick={() => setApiModalOpen(true)}
-              title="自定义 API 凭证"
+              title="API 与模型设置"
               className={`relative inline-flex h-10 w-10 items-center justify-center rounded-full border bg-white/70 text-base backdrop-blur transition active:scale-95 hover:border-indigo-300 dark:bg-zinc-900/60 ${
                 customApiActive
                   ? "border-indigo-300 text-indigo-600 dark:border-indigo-500/60 dark:text-indigo-300"
@@ -753,6 +763,41 @@ export default function Home() {
           </label>
 
           <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-2">
+              <span className="text-sm font-medium text-zinc-800 dark:text-zinc-200">
+                模型
+              </span>
+              <Select
+                value={model}
+                onChange={setModel}
+                size="large"
+                options={IMAGE_MODEL_OPTIONS}
+                optionRender={(option) => {
+                  const data = option.data as ImageModelOption;
+                  return (
+                    <div className="flex flex-col gap-0.5 py-1">
+                      <span className="flex items-center gap-1.5 text-sm font-medium">
+                        {data.label}
+                        <span className="rounded-full bg-indigo-50 px-1.5 py-0.5 text-[10px] font-medium text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-300">
+                          {data.tag}
+                        </span>
+                      </span>
+                      <span className="text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">
+                        {data.description}
+                      </span>
+                    </div>
+                  );
+                }}
+                classNames={{ popup: { root: "model-select-popup" } }}
+                placeholder="选择模型"
+                className="w-full"
+                disabled={loading}
+              />
+              <p className="text-[11px] leading-relaxed text-zinc-500 dark:text-zinc-500">
+                {activeModel.tag} · {activeModel.description}
+              </p>
+            </div>
+
             <div className="flex flex-col gap-2">
               <span className="text-sm font-medium text-zinc-800 dark:text-zinc-200">
                 尺寸

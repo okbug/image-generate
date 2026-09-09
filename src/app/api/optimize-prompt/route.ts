@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server";
 
 import { resolveCredentials } from "@/lib/api-credentials";
+import { resolveOptimizeModel } from "@/lib/models";
 
 export const runtime = "nodejs";
 
 type OptimizeBody = {
   prompt?: string;
+  model?: string;
 };
 
 type ChatCompletionResponse = {
@@ -55,7 +57,7 @@ export async function POST(req: Request) {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "gpt-5.5",
+          model: resolveOptimizeModel(body.model),
           messages: [
             { role: "system", content: SYSTEM_PROMPT },
             { role: "user", content: original },

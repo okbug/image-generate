@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { resolveCredentials } from "@/lib/api-credentials";
+import { resolveImageModel } from "@/lib/models";
 import type { GenerateRequestBody } from "@/types/images";
 
 export const runtime = "nodejs";
@@ -28,7 +29,7 @@ export async function POST(req: Request) {
   }
 
   const payload = {
-    model: body.model ?? "gpt-image-2",
+    model: resolveImageModel(body.model),
     prompt,
     size: body.size ?? "1792x1024",
     quality: body.quality ?? "standard",
