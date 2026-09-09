@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Image, Select, Upload, type UploadFile, type UploadProps } from "antd";
-import { ClipboardPaste, ImagePlus, UploadCloud, X } from "lucide-react";
+import { ClipboardPaste, ImagePlus, Timer, Trash2, UploadCloud, X } from "lucide-react";
 
 import { CustomApiModal } from "@/components/CustomApiModal";
 import {
@@ -13,6 +13,12 @@ import {
   findImageModel,
 } from "@/lib/models";
 import { useCustomApi } from "@/lib/use-custom-api";
+import {
+  type TimingEntry,
+  formatDuration,
+  formatRelativeTime,
+  useTimings,
+} from "@/lib/use-timings";
 import {
   type GenerateApiResult,
   type ImageItem,
@@ -103,16 +109,35 @@ export default function Home() {
   const uploading = uploadFileList.some((file) => file.status === "uploading");
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<ImagesGenerationsResponse | null>(null);
+  // 耗时：startedAt 非空表示正在计时，elapsedMs 每 100ms 刷新一次
+  const [startedAt, setStartedAt] = useState<number | null>(null);
+  const [elapsedMs, setElapsedMs] = useState(0);
+  const [lastDurationMs, setLastDurationMs] = useState<number | null>(null);
   const uploadedImagesRef = useRef<UploadedImage[]>([]);
 
   const { settings, save: saveCustomApi, buildHeaders, active: customApiActive } =
     useCustomApi();
+  const {
+    entries: timingEntries,
+    add: addTiming,
+    clear: clearTimings,
+    averages: timingAverages,
+  } = useTimings();
   const [apiModalOpen, setApiModalOpen] = useState(false);
 
   // 进入页面时尝试清理服务端遗留的过期临时图片
   useEffect(() => {
     fetch("/api/cleanup", { method: "POST" }).catch(() => {});
   }, []);
+
+  // 出图期间每 100ms 更新一次已用时长（起始值由发起请求处置为 0）
+  useEffect(() => {
+    if (startedAt === null) return;
+    const timer = window.setInterval(() => {
+      setElapsedMs(Date.now() - startedAt);
+    }, 100);
+    return () => window.clearInterval(timer);
+  }, [startedAt]);
 
   function clampSide(n: number): number {
     if (!Number.isFinite(n)) return CUSTOM_SIZE_MIN;
@@ -132,11 +157,17 @@ export default function Home() {
     setError(null);
     setResult(null);
 
+    const usedSize = resolveSize();
+    const begunAt = Date.now();
+    setStartedAt(begunAt);
+    setElapsedMs(0);
+    let ok = false;
+
     try {
       const res = await fetch("/api/generate", {
         method: "POST",
         headers: buildHeaders({ "Content-Type": "application/json" }),
-        body: JSON.stringify({ prompt, model, size: resolveSize(), quality }),
+        body: JSON.stringify({ prompt, model, size: usedSize, quality }),
       });
 
       const json = (await res.json()) as GenerateApiResult;
@@ -155,9 +186,15 @@ export default function Home() {
       }
 
       setResult(json);
+      ok = true;
     } catch (err) {
       setError(err instanceof Error ? err.message : "未知错误");
     } finally {
+      const ms = Date.now() - begunAt;
+      setStartedAt(null);
+      setElapsedMs(ms);
+      setLastDurationMs(ms);
+      addTiming({ mode: "generate", model, size: usedSize, ms, ok });
       setLoading(false);
     }
   }
@@ -392,6 +429,12 @@ export default function Home() {
     setError(null);
     setResult(null);
 
+    const usedSize = resolveSize();
+    const begunAt = Date.now();
+    setStartedAt(begunAt);
+    setElapsedMs(0);
+    let ok = false;
+
     try {
       const res = await fetch("/api/edit", {
         method: "POST",
@@ -400,7 +443,7 @@ export default function Home() {
           prompt,
           imageUrls,
           model,
-          size: resolveSize(),
+          size: usedSize,
           quality,
         }),
       });
@@ -416,9 +459,15 @@ export default function Home() {
         return;
       }
       setResult(json);
+      ok = true;
     } catch (err) {
       setError(err instanceof Error ? err.message : "未知错误");
     } finally {
+      const ms = Date.now() - begunAt;
+      setStartedAt(null);
+      setElapsedMs(ms);
+      setLastDurationMs(ms);
+      addTiming({ mode: "edit", model, size: usedSize, ms, ok });
       setLoading(false);
     }
   }
@@ -873,7 +922,25 @@ export default function Home() {
 
           <div className="flex flex-col gap-3 border-t border-zinc-200/70 pt-4 dark:border-zinc-800/70 sm:flex-row sm:items-center sm:justify-between">
             <span className="text-xs text-zinc-500 dark:text-zinc-500">
-              单张约 30 秒 – 2 分钟，请保持页面打开。
+              {loading ? (
+                <span className="inline-flex flex-wrap items-center gap-x-1.5 gap-y-1">
+                  <span className="inline-flex items-center gap-1.5 font-semibold tabular-nums text-indigo-600 dark:text-indigo-300">
+                    <Timer className="h-3.5 w-3.5 animate-pulse" />
+                    已用 {formatDuration(elapsedMs)}
+                  </span>
+                  <span>· 单张约 30 秒 – 2 分钟，请保持页面打开。</span>
+                </span>
+              ) : lastDurationMs !== null ? (
+                <span className="inline-flex flex-wrap items-center gap-x-1.5 gap-y-1">
+                  <span className="inline-flex items-center gap-1.5 font-medium tabular-nums text-zinc-700 dark:text-zinc-300">
+                    <Timer className="h-3.5 w-3.5" />
+                    上次耗时 {formatDuration(lastDurationMs)}
+                  </span>
+                  <span>· 单张约 30 秒 – 2 分钟。</span>
+                </span>
+              ) : (
+                "单张约 30 秒 – 2 分钟，请保持页面打开。"
+              )}
             </span>
             <button
               type="submit"
@@ -893,7 +960,8 @@ export default function Home() {
               {loading ? (
                 <>
                   <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/70 border-t-transparent" />
-                  {mode === Mode.Edit ? "正在编辑…" : "正在绘制…"}
+                  {mode === Mode.Edit ? "正在编辑" : "正在绘制"}
+                  <span className="tabular-nums">{formatDuration(elapsedMs)}</span>
                 </>
               ) : (
                 <>✨ {mode === Mode.Edit ? "编辑图片" : "生成图片"}</>
@@ -910,7 +978,7 @@ export default function Home() {
 
         {result && renderedItems.length > 0 && (
           <section className="flex flex-col gap-5">
-            <ResultMeta result={result} />
+            <ResultMeta result={result} durationMs={lastDurationMs} />
             <div
               className={`grid gap-4 ${
                 renderedItems.length > 1
@@ -928,6 +996,14 @@ export default function Home() {
               ))}
             </div>
           </section>
+        )}
+
+        {timingEntries.length > 0 && (
+          <TimingPanel
+            entries={timingEntries}
+            averages={timingAverages}
+            onClear={clearTimings}
+          />
         )}
 
         {!result && !error && !loading && (
@@ -948,7 +1024,13 @@ export default function Home() {
   );
 }
 
-function ResultMeta({ result }: { result: ImagesGenerationsResponse }) {
+function ResultMeta({
+  result,
+  durationMs,
+}: {
+  result: ImagesGenerationsResponse;
+  durationMs: number | null;
+}) {
   const usage = result.usage;
   return (
     <div className="glass flex flex-wrap items-center gap-x-4 gap-y-2 rounded-2xl p-3 text-xs text-zinc-600 dark:text-zinc-400 sm:gap-x-6 sm:p-4">
@@ -958,8 +1040,101 @@ function ResultMeta({ result }: { result: ImagesGenerationsResponse }) {
       {result.output_format && (
         <MetaPill label="格式" value={String(result.output_format).toUpperCase()} />
       )}
+      {durationMs !== null && (
+        <MetaPill label="耗时" value={formatDuration(durationMs)} />
+      )}
       {usage && <UsageInfo usage={usage} />}
     </div>
+  );
+}
+
+function TimingPanel({
+  entries,
+  averages,
+  onClear,
+}: {
+  entries: TimingEntry[];
+  averages: Array<{ model: string; count: number; avgMs: number }>;
+  onClear: () => void;
+}) {
+  // 相对时间每 30 秒刷新一次，不然「刚刚」会一直挂着
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 30_000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  return (
+    <section className="glass flex flex-col gap-3 rounded-2xl p-4 sm:rounded-3xl sm:p-5">
+      <div className="flex items-center justify-between gap-2">
+        <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-1 text-sm font-medium text-zinc-800 dark:text-zinc-200">
+          <span className="inline-flex items-center gap-1.5">
+            <Timer className="h-4 w-4 text-indigo-500" />
+            出图耗时记录
+          </span>
+          <span className="text-xs font-normal text-zinc-500 dark:text-zinc-500">
+            最近 {entries.length} 次，只存在本机浏览器
+          </span>
+        </span>
+        <button
+          type="button"
+          onClick={onClear}
+          className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full border border-zinc-200 bg-white/70 px-3 text-xs text-zinc-600 transition active:scale-95 hover:border-red-300 hover:text-red-600 dark:border-zinc-700 dark:bg-zinc-900/60 dark:text-zinc-300 dark:hover:border-red-500/50 dark:hover:text-red-300"
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+          清空
+        </button>
+      </div>
+
+      {averages.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {averages.map((item) => (
+            <span
+              key={item.model}
+              className="inline-flex items-center gap-1.5 rounded-full bg-indigo-50/80 px-2.5 py-1 text-[11px] text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-200"
+            >
+              {item.model}
+              <span className="font-semibold tabular-nums">
+                {formatDuration(item.avgMs)}
+              </span>
+              <span className="text-indigo-500/80 dark:text-indigo-300/70">
+                均值 · {item.count} 次
+              </span>
+            </span>
+          ))}
+        </div>
+      )}
+
+      <ul className="flex flex-col divide-y divide-zinc-200/70 dark:divide-zinc-800/70">
+        {entries.map((entry) => (
+          <li
+            key={entry.id}
+            className="flex items-center justify-between gap-3 py-2 text-xs"
+          >
+            <span className="flex min-w-0 flex-col gap-0.5">
+              <span className="truncate font-medium text-zinc-800 dark:text-zinc-200">
+                {entry.model}
+                <span className="ml-1.5 font-normal text-zinc-500 dark:text-zinc-500">
+                  {entry.mode === "edit" ? "编辑" : "生成"} · {entry.size}
+                </span>
+              </span>
+              <span className="text-zinc-500 dark:text-zinc-500">
+                {formatRelativeTime(entry.at, now)}
+              </span>
+            </span>
+            <span
+              className={`shrink-0 rounded-full px-2.5 py-1 font-semibold tabular-nums ${
+                entry.ok
+                  ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300"
+                  : "bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-300"
+              }`}
+            >
+              {entry.ok ? formatDuration(entry.ms) : `失败 · ${formatDuration(entry.ms)}`}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
 
