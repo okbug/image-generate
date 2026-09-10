@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { resolveCredentials } from "@/lib/api-credentials";
+import { buildUpstreamHeaders } from "@/lib/client-info";
 import { resolveOptimizeModel } from "@/lib/models";
 
 export const runtime = "nodejs";
@@ -52,10 +53,10 @@ export async function POST(req: Request) {
       `${baseUrl.replace(/\/$/, "")}/v1/chat/completions`,
       {
         method: "POST",
-        headers: {
+        headers: buildUpstreamHeaders(req, {
           Authorization: `Bearer ${apiKey}`,
           "Content-Type": "application/json",
-        },
+        }),
         body: JSON.stringify({
           model: resolveOptimizeModel(body.model),
           messages: [
