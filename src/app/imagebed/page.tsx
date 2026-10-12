@@ -167,11 +167,14 @@ export default function ImageBedPage() {
   }
 
   function copyToClipboard(text: string) {
-    navigator.clipboard.writeText(text).then(() => {
-      alert("已复制到剪贴板");
-    }).catch(() => {
-      alert("复制失败");
-    });
+    navigator.clipboard
+      .writeText(text)
+      .then(() => {
+        alert("已复制到剪贴板");
+      })
+      .catch(() => {
+        alert("复制失败");
+      });
   }
 
   return (
@@ -255,7 +258,8 @@ export default function ImageBedPage() {
                       点击、拖拽或粘贴图片
                     </span>
                     <span className="text-sm leading-relaxed text-zinc-500 dark:text-zinc-400">
-                      支持 PNG / JPG / WebP，单张最大 10MB，最多 {MAX_UPLOAD_COUNT} 张
+                      支持 PNG / JPG / WebP，单张最大 10MB，最多{" "}
+                      {MAX_UPLOAD_COUNT} 张
                     </span>
                   </div>
                 </Upload.Dragger>
@@ -263,7 +267,9 @@ export default function ImageBedPage() {
                 {uploadedImages.length > 0 && (
                   <div className="flex flex-col gap-3 mt-4">
                     <div className="flex items-center justify-between text-sm text-zinc-600 dark:text-zinc-400">
-                      <span>已上传 {uploadedImages.length}/{MAX_UPLOAD_COUNT}</span>
+                      <span>
+                        已上传 {uploadedImages.length}/{MAX_UPLOAD_COUNT}
+                      </span>
                       <button
                         type="button"
                         onClick={() => {
@@ -285,6 +291,7 @@ export default function ImageBedPage() {
                           key={image.uid}
                           className="group relative overflow-hidden rounded-xl border border-zinc-200 bg-white/70 dark:border-zinc-700 dark:bg-zinc-900/50"
                         >
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
                             src={image.previewSrc}
                             alt={`已上传图片 ${idx + 1}`}
@@ -294,11 +301,15 @@ export default function ImageBedPage() {
                             type="button"
                             onClick={() => {
                               setUploadFileList((current) =>
-                                current.filter((file) => file.uid !== image.uid),
+                                current.filter(
+                                  (file) => file.uid !== image.uid,
+                                ),
                               );
                               setUploadedImages((current) => {
                                 URL.revokeObjectURL(image.previewSrc);
-                                return current.filter((item) => item.uid !== image.uid);
+                                return current.filter(
+                                  (item) => item.uid !== image.uid,
+                                );
                               });
                             }}
                             className="absolute top-2 right-2 inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/70 bg-zinc-950/70 text-white shadow-sm transition hover:bg-red-600"
@@ -342,7 +353,7 @@ export default function ImageBedPage() {
               <ul className="list-disc list-inside space-y-1 text-zinc-500 dark:text-zinc-500">
                 <li>上传的图片将永久存储在服务器</li>
                 <li>支持拖拽上传和粘贴上传（Ctrl/Cmd + V）</li>
-                <li>点击"复制链接"可直接复制图片地址</li>
+                <li>点击「复制链接」可直接复制图片地址</li>
               </ul>
             </div>
           </>

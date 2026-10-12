@@ -1,0 +1,14 @@
+# 构建产物与依赖
+.next/
+.next-dev/
+node_modules/
+pnpm-lock.yaml
+
+# 运行时数据、上传图片、打包产物
+public/
+data/
+*.tar.gz
+.codex/
+
+# 文档保持手写排版
+*.md

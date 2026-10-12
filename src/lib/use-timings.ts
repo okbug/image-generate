@@ -88,7 +88,11 @@ function write(entries: TimingEntry[]) {
 }
 
 export function useTimings() {
-  const raw = useSyncExternalStore(subscribe, getRawSnapshot, getServerSnapshot);
+  const raw = useSyncExternalStore(
+    subscribe,
+    getRawSnapshot,
+    getServerSnapshot,
+  );
   const entries = useMemo(() => parseEntries(raw), [raw]);
 
   const add = useCallback((entry: Omit<TimingEntry, "id" | "at">) => {

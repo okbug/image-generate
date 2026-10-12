@@ -14,22 +14,28 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ```bash
 npm run build    # next build + postbuild（把 public/ 和 .next/static 拷进 .next/standalone/）
-npm run lint     # eslint（eslint-config-next core-web-vitals + typescript）
+npm run lint     # eslint（eslint-config-next core-web-vitals + typescript），当前 0 问题
+npm run format   # prettier --write .（配置 .prettierrc.json，忽略规则 .prettierignore，Markdown 不格式化）
+npm run format:check
 npm run dev      # next dev -p 3005 —— 本机不要直接跑，3005 被生产服务占用（见下文）
 npm start        # 手动起 standalone —— 本机不要用，生产由 systemd 管
 ```
 
 - 没有测试框架，也没有测试。
-- 仓库里有 `pnpm-lock.yaml`，但本机历来用 `npm run ...` 执行脚本，`node_modules` 已就位，不要重新换包管理器安装。
+- `node_modules` 是 pnpm 布局（`node_modules/.pnpm`），加依赖用 `pnpm add`（如 `pnpm add -D xxx`），**不要 `npm install`**，会把依赖目录搞乱。
+  执行脚本照旧用 `npm run ...`。
 - 本机想跑 dev 调试要换端口：`npx next dev -p 3006`。
 
 ## 架构
 
-**前端（`src/app/page.tsx`，单个客户端组件）**
+**前端（`src/app/page.tsx` + `src/components/workshop/*`）**
+- `page.tsx` 只管状态和请求（生成 / 编辑 / 优化提示词 / 切模式）；界面拆在 `src/components/workshop/`：
+  `PageHeader`、`ApiKeyNotice`、`ReferenceImagesInput`、`PromptInput`、`GenerationOptions`、`SubmitBar`、`ResultSection`、`TimingPanel`。
+- 参考图上传的状态和逻辑在 `workshop/use-reference-images.ts`；常量、类型、纯函数（尺寸、上限、校验）在 `workshop/constants.ts`。
 - 两种模式：`generate`（文生图）和 `edit`（参考图重绘）。edit 模式下参考图先 `POST /api/upload` 落盘为临时文件并拿到公网 URL，再把 URL 数组交给 `/api/edit`；上游是通过 URL 拉图的，所以域名必须公网可达。
 - 也可以直接填外部图片 URL，此时本站不暂存。
 - 页面加载时会 `POST /api/cleanup` 顺手清理过期临时图（没有 cron，全靠访问触发）。
-- 参考图上限 10 张，在 `page.tsx` 的 `MAX_UPLOAD_COUNT` 和 `api/edit/route.ts` 两处硬编码，改要一起改。
+- 参考图上限 10 张，在 `workshop/constants.ts` 的 `MAX_UPLOAD_COUNT` 和 `api/edit/route.ts` 两处硬编码，改要一起改。
 
 **API 路由（全部 `runtime = "nodejs"`）**
 - `/api/generate` → `{baseUrl}/v1/images/generations`，`response_format: b64_json`

@@ -66,18 +66,42 @@ body {
   inset: -20%;
   z-index: -1;
   background:
-    radial-gradient(45% 35% at 15% 10%, rgba(168, 85, 247, 0.18), transparent 60%),
-    radial-gradient(40% 35% at 85% 0%, rgba(56, 189, 248, 0.18), transparent 60%),
-    radial-gradient(50% 40% at 50% 100%, rgba(244, 114, 182, 0.16), transparent 65%);
+    radial-gradient(
+      45% 35% at 15% 10%,
+      rgba(168, 85, 247, 0.18),
+      transparent 60%
+    ),
+    radial-gradient(
+      40% 35% at 85% 0%,
+      rgba(56, 189, 248, 0.18),
+      transparent 60%
+    ),
+    radial-gradient(
+      50% 40% at 50% 100%,
+      rgba(244, 114, 182, 0.16),
+      transparent 65%
+    );
   filter: blur(40px);
   pointer-events: none;
 }
 @media (prefers-color-scheme: dark) {
   .app-aurora::before {
     background:
-      radial-gradient(45% 35% at 15% 10%, rgba(139, 92, 246, 0.28), transparent 60%),
-      radial-gradient(40% 35% at 85% 0%, rgba(14, 165, 233, 0.25), transparent 60%),
-      radial-gradient(50% 40% at 50% 100%, rgba(236, 72, 153, 0.20), transparent 65%);
+      radial-gradient(
+        45% 35% at 15% 10%,
+        rgba(139, 92, 246, 0.28),
+        transparent 60%
+      ),
+      radial-gradient(
+        40% 35% at 85% 0%,
+        rgba(14, 165, 233, 0.25),
+        transparent 60%
+      ),
+      radial-gradient(
+        50% 40% at 50% 100%,
+        rgba(236, 72, 153, 0.2),
+        transparent 65%
+      );
   }
 }
 
@@ -87,13 +111,17 @@ body {
   backdrop-filter: saturate(140%) blur(14px);
   -webkit-backdrop-filter: saturate(140%) blur(14px);
   border: 1px solid rgba(0, 0, 0, 0.06);
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.7) inset, 0 8px 32px rgba(0, 0, 0, 0.04);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.7) inset,
+    0 8px 32px rgba(0, 0, 0, 0.04);
 }
 @media (prefers-color-scheme: dark) {
   .glass {
     background: rgba(20, 20, 28, 0.55);
     border-color: rgba(255, 255, 255, 0.08);
-    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 8px 32px rgba(0, 0, 0, 0.4);
+    box-shadow:
+      0 1px 0 rgba(255, 255, 255, 0.04) inset,
+      0 8px 32px rgba(0, 0, 0, 0.4);
   }
 }
 

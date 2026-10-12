@@ -18,7 +18,8 @@ export const IMAGE_MODEL_OPTIONS: ImageModelOption[] = [
     value: "gpt-image-2",
     label: "gpt-image-2",
     tag: "默认",
-    description: "老款，最稳。速度和画质均衡，出图风格最可预期，不确定选哪个就用它。",
+    description:
+      "老款，最稳。速度和画质均衡，出图风格最可预期，不确定选哪个就用它。",
   },
   {
     value: "gpt-image-2.5-flare",

@@ -24,7 +24,10 @@ export async function POST(req: Request) {
   try {
     body = (await req.json()) as Partial<GenerateRequestBody>;
   } catch {
-    return NextResponse.json({ error: "请求体不是合法的 JSON" }, { status: 400 });
+    return NextResponse.json(
+      { error: "请求体不是合法的 JSON" },
+      { status: 400 },
+    );
   }
 
   const prompt = body.prompt?.trim();

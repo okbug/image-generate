@@ -38,7 +38,8 @@ function FormFields({
           <code className="rounded bg-amber-100/80 px-1 py-0.5 text-[11px] dark:bg-amber-500/20">
             localStorage
           </code>
-          ，每次请求时通过请求头临时转发到本站后端，再由后端调用你指定的上游 API，请求结束即丢弃。
+          ，每次请求时通过请求头临时转发到本站后端，再由后端调用你指定的上游
+          API，请求结束即丢弃。
         </p>
         <p className="mt-1.5 text-amber-700 dark:text-amber-300">
           清除浏览器数据 / 退出隐私窗口后这些设置会消失，请妥善保管你的 Key。
@@ -46,7 +47,8 @@ function FormFields({
       </div>
 
       <p className="text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">
-        本站不提供默认额度，生图和优化提示词都需要填写你自己的 API 地址和 Key（两项都必填）。
+        本站不提供默认额度，生图和优化提示词都需要填写你自己的 API 地址和
+        Key（两项都必填）。
       </p>
 
       <div className="flex flex-col gap-3">
@@ -59,7 +61,8 @@ function FormFields({
             size="large"
           />
           <span className="text-[11px] text-zinc-500 dark:text-zinc-400">
-            填你自己的 OpenAI 兼容服务地址，不要带末尾斜杠，路径会自动拼接 /v1/...
+            填你自己的 OpenAI 兼容服务地址，不要带末尾斜杠，路径会自动拼接
+            /v1/...
           </span>
         </label>
 

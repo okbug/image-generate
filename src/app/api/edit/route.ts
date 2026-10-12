@@ -32,7 +32,10 @@ export async function POST(req: Request) {
   try {
     body = (await req.json()) as EditBody;
   } catch {
-    return NextResponse.json({ error: "请求体不是合法的 JSON" }, { status: 400 });
+    return NextResponse.json(
+      { error: "请求体不是合法的 JSON" },
+      { status: 400 },
+    );
   }
 
   const prompt = body.prompt?.trim();
@@ -74,17 +77,14 @@ export async function POST(req: Request) {
 
   let upstream: Response;
   try {
-    upstream = await fetch(
-      `${baseUrl.replace(/\/$/, "")}/v1/images/edits`,
-      {
-        method: "POST",
-        headers: buildUpstreamHeaders(req, {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-        }),
-        body: JSON.stringify(payload),
-      },
-    );
+    upstream = await fetch(`${baseUrl.replace(/\/$/, "")}/v1/images/edits`, {
+      method: "POST",
+      headers: buildUpstreamHeaders(req, {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      }),
+      body: JSON.stringify(payload),
+    });
   } catch (err) {
     return NextResponse.json(
       { error: `无法访问上游服务 (${baseUrl})`, detail: String(err) },

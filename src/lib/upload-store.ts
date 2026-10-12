@@ -2,8 +2,7 @@ import path from "node:path";
 
 export const UPLOAD_TMP_ROUTE = "/images/tmp";
 export const UPLOAD_PERMANENT_ROUTE = "/images/permanent";
-export const UPLOAD_NAME_RE =
-  /^(\d{13})-[a-f0-9-]{36}\.(png|jpe?g|webp)$/i;
+export const UPLOAD_NAME_RE = /^(\d{13})-[a-f0-9-]{36}\.(png|jpe?g|webp)$/i;
 export const UPLOAD_EXPIRY_MS = 30 * 60 * 1000;
 export const IMAGEBED_PASSWORD = process.env.IMAGEBED_PASSWORD ?? "";
 

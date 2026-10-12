@@ -27,7 +27,10 @@ export type ClientInfo = {
   host: string;
 };
 
-function sanitize(value: string | null | undefined, max = MAX_FIELD_LEN): string {
+function sanitize(
+  value: string | null | undefined,
+  max = MAX_FIELD_LEN,
+): string {
   if (!value) return "";
   return value
     .replace(/[^\x20-\x7E]/g, "")

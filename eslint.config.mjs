@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // 本机开发模式的构建产物
+    ".next-dev/**",
   ]),
 ]);
 

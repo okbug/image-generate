@@ -74,7 +74,11 @@ function isActive(s: CustomApiSettings): boolean {
 }
 
 export function useCustomApi() {
-  const raw = useSyncExternalStore(subscribe, getRawSnapshot, getServerSnapshot);
+  const raw = useSyncExternalStore(
+    subscribe,
+    getRawSnapshot,
+    getServerSnapshot,
+  );
   const settings = useMemo(() => parseSettings(raw), [raw]);
 
   const save = useCallback((next: CustomApiSettings) => {

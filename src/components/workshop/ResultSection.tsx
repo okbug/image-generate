@@ -1,0 +1,197 @@
+"use client";
+
+import { useState } from "react";
+
+import { formatDuration } from "@/lib/use-timings";
+import {
+  type ImageItem,
+  type ImageUsage,
+  type ImagesGenerationsResponse,
+  extFromFormat,
+  mimeFromFormat,
+} from "@/types/images";
+
+import type { RenderedItem } from "./constants";
+
+/** 把接口返回的图片（b64 或 URL）统一成可直接展示 / 下载的条目。 */
+export function toRenderedItems(
+  result: ImagesGenerationsResponse | null,
+): RenderedItem[] {
+  return (result?.data ?? []).flatMap((item: ImageItem): RenderedItem[] => {
+    const ext = extFromFormat(result?.output_format);
+    if (item.b64_json) {
+      const mime = mimeFromFormat(result?.output_format);
+      return [
+        {
+          src: `data:${mime};base64,${item.b64_json}`,
+          revisedPrompt: item.revised_prompt,
+          ext,
+        },
+      ];
+    }
+    if (item.url) {
+      return [{ src: item.url, revisedPrompt: item.revised_prompt, ext }];
+    }
+    return [];
+  });
+}
+
+/** 出图结果：概要信息 + 每张图一张卡片。 */
+export function ResultSection({
+  result,
+  renderedItems,
+  lastDurationMs,
+  onEditResult,
+  editDisabled,
+}: {
+  result: ImagesGenerationsResponse;
+  renderedItems: RenderedItem[];
+  lastDurationMs: number | null;
+  onEditResult: (item: RenderedItem, index: number) => void;
+  editDisabled: boolean;
+}) {
+  return (
+    <section className="flex flex-col gap-5">
+      <ResultMeta result={result} durationMs={lastDurationMs} />
+      <div
+        className={`grid gap-4 ${
+          renderedItems.length > 1
+            ? "grid-cols-1 md:grid-cols-2"
+            : "grid-cols-1"
+        }`}
+      >
+        {renderedItems.map((item, idx) => (
+          <ResultCard
+            key={idx}
+            index={idx}
+            item={item}
+            createdAt={result.created}
+            onEdit={() => onEditResult(item, idx)}
+            editDisabled={editDisabled}
+          />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function ResultMeta({
+  result,
+  durationMs,
+}: {
+  result: ImagesGenerationsResponse;
+  durationMs: number | null;
+}) {
+  const usage = result.usage;
+  return (
+    <div className="glass flex flex-wrap items-center gap-x-4 gap-y-2 rounded-2xl p-3 text-xs text-zinc-600 dark:text-zinc-400 sm:gap-x-6 sm:p-4">
+      <MetaPill label="模型" value={result.model ?? "-"} />
+      <MetaPill label="尺寸" value={result.size ?? "-"} />
+      {result.quality && <MetaPill label="质量" value={result.quality} />}
+      {result.output_format && (
+        <MetaPill
+          label="格式"
+          value={String(result.output_format).toUpperCase()}
+        />
+      )}
+      {durationMs !== null && (
+        <MetaPill label="耗时" value={formatDuration(durationMs)} />
+      )}
+      {usage && <UsageInfo usage={usage} />}
+    </div>
+  );
+}
+
+function MetaPill({ label, value }: { label: string; value: string }) {
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      <span className="text-zinc-500 dark:text-zinc-500">{label}</span>
+      <span className="font-medium text-zinc-800 dark:text-zinc-200">
+        {value}
+      </span>
+    </span>
+  );
+}
+
+function UsageInfo({ usage }: { usage: ImageUsage }) {
+  return (
+    <span className="inline-flex w-full items-center gap-1.5 rounded-full bg-zinc-100/80 px-2.5 py-1 dark:bg-zinc-800/60 sm:ml-auto sm:w-auto">
+      <span className="text-zinc-500 dark:text-zinc-500">tokens</span>
+      <span className="font-medium text-zinc-800 dark:text-zinc-200">
+        输入 {usage.input_tokens} · 输出 {usage.output_tokens} · 总{" "}
+        {usage.total_tokens}
+      </span>
+    </span>
+  );
+}
+
+function ResultCard({
+  item,
+  index,
+  createdAt,
+  onEdit,
+  editDisabled,
+}: {
+  item: RenderedItem;
+  index: number;
+  createdAt: number;
+  onEdit: () => void;
+  editDisabled: boolean;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const fileName = `image-${createdAt}-${index + 1}.${item.ext}`;
+
+  return (
+    <figure className="glass overflow-hidden rounded-2xl sm:rounded-3xl">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={item.src}
+        alt={`生成结果 ${index + 1}`}
+        className="block h-auto w-full"
+      />
+      <figcaption className="flex flex-col gap-3 p-4 sm:px-5 sm:py-4">
+        <div className="flex items-center justify-between text-xs">
+          <span className="font-medium text-zinc-700 dark:text-zinc-300">
+            #{index + 1} 作品
+          </span>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={onEdit}
+              disabled={editDisabled}
+              title="把这张图作为参考图，继续修改"
+              className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-indigo-200 bg-indigo-50/70 px-3.5 text-xs font-medium text-indigo-700 transition active:scale-95 hover:border-indigo-300 hover:bg-indigo-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-indigo-500/40 dark:bg-indigo-500/10 dark:text-indigo-300 dark:hover:border-indigo-400/60 dark:hover:bg-indigo-500/20"
+            >
+              ✏️ 编辑该图片
+            </button>
+            <a
+              href={item.src}
+              download={fileName}
+              className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-zinc-900 px-3.5 text-xs font-medium text-white transition active:scale-95 hover:bg-zinc-700 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200"
+            >
+              ↓ 下载
+            </a>
+          </div>
+        </div>
+
+        {item.revisedPrompt && (
+          <details
+            open={expanded}
+            onToggle={(e) => setExpanded((e.target as HTMLDetailsElement).open)}
+            className="group rounded-xl border border-zinc-200/80 bg-white/50 p-3 text-xs leading-relaxed text-zinc-600 transition dark:border-zinc-800 dark:bg-zinc-900/40 dark:text-zinc-300"
+          >
+            <summary className="cursor-pointer list-none font-medium text-zinc-700 marker:hidden dark:text-zinc-200">
+              <span className="inline-flex items-center gap-1.5">
+                <span className="transition group-open:rotate-90">▸</span>
+                模型改写后的 Prompt
+              </span>
+            </summary>
+            <p className="mt-2 whitespace-pre-wrap text-zinc-600 dark:text-zinc-400">
+              {item.revisedPrompt}
+            </p>
+          </details>
+        )}
+      </figcaption>
+    </figure>
+  );
+}

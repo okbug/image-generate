@@ -63,9 +63,15 @@ function resolveMode(mode: unknown): OptimizeMode {
 /** 模型偶尔还是会带上代码块、引号或"优化后："前缀，这里兜底剥掉。 */
 function cleanOutput(raw: string): string {
   let text = raw.trim();
-  text = text.replace(/^```[\w-]*\s*\n?/, "").replace(/\n?```$/, "").trim();
   text = text
-    .replace(/^(?:优化后(?:的)?(?:提示词|prompt)?|提示词|prompt|optimized prompt)\s*[:：]\s*/i, "")
+    .replace(/^```[\w-]*\s*\n?/, "")
+    .replace(/\n?```$/, "")
+    .trim();
+  text = text
+    .replace(
+      /^(?:优化后(?:的)?(?:提示词|prompt)?|提示词|prompt|optimized prompt)\s*[:：]\s*/i,
+      "",
+    )
     .trim();
   const pairs: Array<[string, string]> = [
     ['"', '"'],
@@ -102,7 +108,10 @@ export async function POST(req: Request) {
   try {
     body = (await req.json()) as OptimizeBody;
   } catch {
-    return NextResponse.json({ error: "请求体不是合法的 JSON" }, { status: 400 });
+    return NextResponse.json(
+      { error: "请求体不是合法的 JSON" },
+      { status: 400 },
+    );
   }
 
   const original = body.prompt?.trim();

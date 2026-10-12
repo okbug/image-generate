@@ -42,10 +42,7 @@ export async function POST(req: Request) {
     );
   }
   if (file.size > MAX_SIZE) {
-    return NextResponse.json(
-      { error: "图片不能超过 10MB" },
-      { status: 400 },
-    );
+    return NextResponse.json({ error: "图片不能超过 10MB" }, { status: 400 });
   }
 
   // 检查是否为图床模式（需要密码）
@@ -73,7 +70,7 @@ export async function POST(req: Request) {
       url,
       size: file.size,
       mime: file.type,
-      permanent: true
+      permanent: true,
     });
   } else {
     // 临时存储模式（原有功能）
@@ -97,7 +94,7 @@ export async function POST(req: Request) {
       url,
       size: file.size,
       mime: file.type,
-      permanent: false
+      permanent: false,
     });
   }
 }
