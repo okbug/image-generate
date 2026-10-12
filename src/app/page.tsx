@@ -1,6 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 
 import { Image, Select, Upload, type UploadFile, type UploadProps } from "antd";
 import { ClipboardPaste, ImagePlus, Timer, Trash2, UploadCloud, X } from "lucide-react";
@@ -64,6 +70,10 @@ type RenderedItem = {
   ext: string;
 };
 
+function noopSubscribe() {
+  return () => {};
+}
+
 enum Mode {
   Generate = "generate",
   Edit = "edit",
@@ -104,6 +114,16 @@ export default function Home() {
   const [customHeight, setCustomHeight] = useState(1024);
   const [loading, setLoading] = useState(false);
   const [optimizing, setOptimizing] = useState(false);
+  // 最近一次优化前后的两版文本，用来在「撤销优化 / 恢复优化」之间切换
+  const [optimizeUndo, setOptimizeUndo] = useState<{
+    before: string;
+    after: string;
+    undone: boolean;
+  } | null>(null);
+  // 输入框内容不再是记录里的那一版（手动编辑、点示例、切模式回填）时，按钮自动隐藏
+  const canToggleOptimize =
+    optimizeUndo !== null &&
+    prompt === (optimizeUndo.undone ? optimizeUndo.before : optimizeUndo.after);
   const [uploadedImages, setUploadedImages] = useState<UploadedImage[]>([]);
   const [uploadFileList, setUploadFileList] = useState<UploadFile[]>([]);
   const uploading = uploadFileList.some((file) => file.status === "uploading");
@@ -114,6 +134,7 @@ export default function Home() {
   const [elapsedMs, setElapsedMs] = useState(0);
   const [lastDurationMs, setLastDurationMs] = useState<number | null>(null);
   const uploadedImagesRef = useRef<UploadedImage[]>([]);
+  const formRef = useRef<HTMLFormElement>(null);
 
   const { settings, save: saveCustomApi, buildHeaders, active: customApiActive } =
     useCustomApi();
@@ -124,6 +145,13 @@ export default function Home() {
     averages: timingAverages,
   } = useTimings();
   const [apiModalOpen, setApiModalOpen] = useState(false);
+  // 凭证存在 localStorage，服务端渲染时读不到；等到客户端再判断，避免已填用户每次刷新都闪一下提示条
+  const isClient = useSyncExternalStore(
+    noopSubscribe,
+    () => true,
+    () => false,
+  );
+  const needCustomApi = isClient && !customApiActive;
 
   // 进入页面时尝试清理服务端遗留的过期临时图片
   useEffect(() => {
@@ -200,6 +228,10 @@ export default function Home() {
   }
 
   async function handleOptimize() {
+    if (!customApiActive) {
+      setApiModalOpen(true);
+      return;
+    }
     if (!prompt.trim() || optimizing || loading) return;
     setOptimizing(true);
     setError(null);
@@ -207,12 +239,19 @@ export default function Home() {
       const res = await fetch("/api/optimize-prompt", {
         method: "POST",
         headers: buildHeaders({ "Content-Type": "application/json" }),
-        body: JSON.stringify({ prompt, model: settings.optimizeModel }),
+        body: JSON.stringify({
+          prompt,
+          model: settings.optimizeModel,
+          mode,
+        }),
       });
       const json = (await res.json()) as { prompt?: string; error?: string };
       if (!res.ok || !json.prompt) {
         setError(json.error ?? `优化失败 (${res.status})`);
         return;
+      }
+      if (json.prompt !== prompt) {
+        setOptimizeUndo({ before: prompt, after: json.prompt, undone: false });
       }
       setPrompt(json.prompt);
     } catch (err) {
@@ -220,6 +259,13 @@ export default function Home() {
     } finally {
       setOptimizing(false);
     }
+  }
+
+  function handleToggleOptimize() {
+    if (!optimizeUndo || !canToggleOptimize) return;
+    const undone = !optimizeUndo.undone;
+    setOptimizeUndo({ ...optimizeUndo, undone });
+    setPrompt(undone ? optimizeUndo.before : optimizeUndo.after);
   }
 
   const deleteRemoteFile = useCallback(async (fileName: string) => {
@@ -368,6 +414,42 @@ export default function Home() {
     return true;
   }
 
+  /** 「编辑该图片」：把生成结果当参考图上传到本站，生成模式下顺带切到编辑模式。 */
+  async function handleEditResult(item: RenderedItem, index: number) {
+    if (loading || uploading) return;
+    if (mode === Mode.Edit && uploadFileList.length >= MAX_UPLOAD_COUNT) {
+      setError(`最多只能上传 ${MAX_UPLOAD_COUNT} 张参考图片`);
+      return;
+    }
+
+    const id = crypto.randomUUID();
+    let file: File;
+    try {
+      const res = await fetch(item.src);
+      if (!res.ok) throw new Error(`读取图片失败 (${res.status})`);
+      const blob = await res.blob();
+      file = new File([blob], `result-${index + 1}-${id.slice(0, 8)}.${item.ext}`, {
+        type: blob.type || `image/${item.ext === "jpg" ? "jpeg" : item.ext}`,
+      });
+    } catch (err) {
+      setError(
+        err instanceof Error ? `读取图片失败：${err.message}` : "读取图片失败",
+      );
+      return;
+    }
+
+    if (mode !== Mode.Edit) handleSwitchMode(Mode.Edit);
+    setImageSource(ImageSource.Upload);
+
+    const uid = `result-${id}`;
+    setUploadFileList((current) => [
+      ...current,
+      { uid, name: file.name, status: "uploading", percent: 0 },
+    ]);
+    formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    await uploadReferenceImage(file, uid);
+  }
+
   const uploadProps: UploadProps = {
     accept: UPLOAD_ACCEPT,
     multiple: true,
@@ -473,6 +555,11 @@ export default function Home() {
   }
 
   function handleSubmit(e: React.FormEvent) {
+    if (!customApiActive) {
+      e.preventDefault();
+      setApiModalOpen(true);
+      return;
+    }
     if (mode === Mode.Edit) return handleEdit(e);
     return handleGenerate(e);
   }
@@ -566,14 +653,33 @@ export default function Home() {
               {customApiActive && (
                 <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-zinc-900" />
               )}
+              {needCustomApi && (
+                <span className="absolute -top-0.5 -right-0.5 h-2 w-2 animate-pulse rounded-full bg-amber-500 ring-2 ring-white dark:ring-zinc-900" />
+              )}
             </button>
           </div>
         </header>
 
         <form
+          ref={formRef}
           onSubmit={handleSubmit}
           className="glass flex flex-col gap-4 rounded-2xl p-4 sm:gap-5 sm:rounded-3xl sm:p-6 md:p-8"
         >
+          {needCustomApi && (
+            <div className="flex flex-col gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 sm:flex-row sm:items-center sm:justify-between dark:border-amber-700/40 dark:bg-amber-500/10 dark:text-amber-200">
+              <p className="leading-relaxed">
+                <span className="font-semibold">🔑 请先填写 API 地址和 Key。</span>
+                本站不提供默认额度，生成、编辑图片和优化提示词都要用你自己的 API。
+              </p>
+              <button
+                type="button"
+                onClick={() => setApiModalOpen(true)}
+                className="inline-flex h-9 shrink-0 items-center justify-center self-start rounded-full bg-amber-500 px-4 text-xs font-semibold text-white transition active:scale-95 hover:bg-amber-600 sm:self-auto"
+              >
+                去填写
+              </button>
+            </div>
+          )}
           {mode === Mode.Edit && (
             <div className="flex flex-col gap-3">
               <div className="flex items-center justify-between gap-2">
@@ -793,21 +899,40 @@ export default function Home() {
               ) : (
                 <span className="hidden sm:block" />
               )}
-              <button
-                type="button"
-                onClick={handleOptimize}
-                disabled={!prompt.trim() || optimizing || loading}
-                className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 self-start rounded-full border border-indigo-200 bg-indigo-50/70 px-3.5 text-xs font-medium text-indigo-700 transition active:scale-95 hover:border-indigo-300 hover:bg-indigo-100 disabled:cursor-not-allowed disabled:opacity-50 sm:self-auto dark:border-indigo-500/40 dark:bg-indigo-500/10 dark:text-indigo-300 dark:hover:border-indigo-400/60 dark:hover:bg-indigo-500/20"
-              >
-                {optimizing ? (
-                  <>
-                    <span className="h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                    优化中…
-                  </>
-                ) : (
-                  <>✨ 优化提示词</>
+              <div className="flex shrink-0 items-center gap-2 self-end sm:self-auto">
+                {canToggleOptimize && (
+                  <button
+                    type="button"
+                    onClick={handleToggleOptimize}
+                    disabled={optimizing || loading}
+                    title={
+                      optimizeUndo?.undone
+                        ? "换回优化后的提示词"
+                        : "换回优化前你写的提示词"
+                    }
+                    className="inline-flex h-9 shrink-0 items-center justify-center rounded-full border border-zinc-200 bg-white/70 px-3.5 text-xs font-medium text-zinc-600 transition active:scale-95 hover:border-zinc-300 hover:bg-zinc-50 hover:text-zinc-800 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-900/60 dark:text-zinc-300 dark:hover:border-zinc-600 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
+                  >
+                    {optimizeUndo?.undone ? "↷ 恢复优化" : "↶ 撤销优化"}
+                  </button>
                 )}
-              </button>
+                <button
+                  type="button"
+                  onClick={handleOptimize}
+                  disabled={
+                    !customApiActive || !prompt.trim() || optimizing || loading
+                  }
+                  className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-full border border-indigo-200 bg-indigo-50/70 px-3.5 text-xs font-medium text-indigo-700 transition active:scale-95 hover:border-indigo-300 hover:bg-indigo-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-indigo-500/40 dark:bg-indigo-500/10 dark:text-indigo-300 dark:hover:border-indigo-400/60 dark:hover:bg-indigo-500/20"
+                >
+                  {optimizing ? (
+                    <>
+                      <span className="h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                      优化中…
+                    </>
+                  ) : (
+                    <>✨ 优化提示词</>
+                  )}
+                </button>
+              </div>
             </div>
           </label>
 
@@ -945,6 +1070,7 @@ export default function Home() {
             <button
               type="submit"
               disabled={
+                !customApiActive ||
                 loading ||
                 uploading ||
                 !prompt.trim() ||
@@ -963,6 +1089,8 @@ export default function Home() {
                   {mode === Mode.Edit ? "正在编辑" : "正在绘制"}
                   <span className="tabular-nums">{formatDuration(elapsedMs)}</span>
                 </>
+              ) : needCustomApi ? (
+                <>🔑 请先填写 API</>
               ) : (
                 <>✨ {mode === Mode.Edit ? "编辑图片" : "生成图片"}</>
               )}
@@ -992,6 +1120,8 @@ export default function Home() {
                   index={idx}
                   item={item}
                   createdAt={result.created}
+                  onEdit={() => void handleEditResult(item, idx)}
+                  editDisabled={loading || uploading}
                 />
               ))}
             </div>
@@ -1162,10 +1292,14 @@ function ResultCard({
   item,
   index,
   createdAt,
+  onEdit,
+  editDisabled,
 }: {
   item: RenderedItem;
   index: number;
   createdAt: number;
+  onEdit: () => void;
+  editDisabled: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
   const fileName = `image-${createdAt}-${index + 1}.${item.ext}`;
@@ -1183,13 +1317,24 @@ function ResultCard({
           <span className="font-medium text-zinc-700 dark:text-zinc-300">
             #{index + 1} 作品
           </span>
-          <a
-            href={item.src}
-            download={fileName}
-            className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-zinc-900 px-3.5 text-xs font-medium text-white transition active:scale-95 hover:bg-zinc-700 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200"
-          >
-            ↓ 下载
-          </a>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={onEdit}
+              disabled={editDisabled}
+              title="把这张图作为参考图，继续修改"
+              className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-indigo-200 bg-indigo-50/70 px-3.5 text-xs font-medium text-indigo-700 transition active:scale-95 hover:border-indigo-300 hover:bg-indigo-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-indigo-500/40 dark:bg-indigo-500/10 dark:text-indigo-300 dark:hover:border-indigo-400/60 dark:hover:bg-indigo-500/20"
+            >
+              ✏️ 编辑该图片
+            </button>
+            <a
+              href={item.src}
+              download={fileName}
+              className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-zinc-900 px-3.5 text-xs font-medium text-white transition active:scale-95 hover:bg-zinc-700 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200"
+            >
+              ↓ 下载
+            </a>
+          </div>
         </div>
 
         {item.revisedPrompt && (

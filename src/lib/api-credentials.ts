@@ -1,19 +1,19 @@
 /**
  * 解析每次请求要使用的上游 API 凭证。
- * 优先级：请求头（用户在浏览器里配置的覆盖值）→ 环境变量。
- * 这样后端不持久化任何用户填的凭证，只是临时使用并转发到上游。
+ * 只认请求头（用户在浏览器「API 与模型设置」里填的值），不再回落到环境变量：
+ * 没填自己的 BaseURL + Key 就不能用。后端不持久化凭证，只是临时使用并转发到上游。
  */
 export type ApiCredentials = {
   baseUrl: string;
   apiKey: string;
 };
 
-export function resolveCredentials(req: Request): ApiCredentials | null {
-  const headerBaseUrl = req.headers.get("x-image-api-base-url")?.trim();
-  const headerApiKey = req.headers.get("x-image-api-key")?.trim();
+export const MISSING_CREDENTIALS_ERROR =
+  "请先点击页面右上角 ⚙️，填写你自己的 API 地址（BaseURL）和 API Key";
 
-  const baseUrl = headerBaseUrl || process.env.IMAGE_API_BASE_URL;
-  const apiKey = headerApiKey || process.env.IMAGE_API_KEY;
+export function resolveCredentials(req: Request): ApiCredentials | null {
+  const baseUrl = req.headers.get("x-image-api-base-url")?.trim();
+  const apiKey = req.headers.get("x-image-api-key")?.trim();
 
   if (!baseUrl || !apiKey) return null;
   return { baseUrl, apiKey };

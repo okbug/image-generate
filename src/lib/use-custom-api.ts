@@ -5,10 +5,11 @@ import { useCallback, useMemo, useSyncExternalStore } from "react";
 const STORAGE_KEY = "image-generator:custom-api";
 
 export type CustomApiSettings = {
+  /** 旧版本有「启用自定义 API」开关，现在必须自填凭证，开关已去掉；保留字段只为兼容旧的 localStorage。 */
   enabled: boolean;
   baseUrl: string;
   apiKey: string;
-  /** 优化提示词用的模型，留空表示用默认的 DEFAULT_OPTIMIZE_MODEL。与上面的凭证开关无关。 */
+  /** 优化提示词用的模型，留空表示用默认的 DEFAULT_OPTIMIZE_MODEL。 */
   optimizeModel: string;
 };
 
@@ -69,7 +70,7 @@ function parseSettings(raw: string | null): CustomApiSettings {
 }
 
 function isActive(s: CustomApiSettings): boolean {
-  return s.enabled && s.baseUrl.trim().length > 0 && s.apiKey.trim().length > 0;
+  return s.baseUrl.trim().length > 0 && s.apiKey.trim().length > 0;
 }
 
 export function useCustomApi() {

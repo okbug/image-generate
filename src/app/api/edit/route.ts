@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 
-import { resolveCredentials } from "@/lib/api-credentials";
+import {
+  MISSING_CREDENTIALS_ERROR,
+  resolveCredentials,
+} from "@/lib/api-credentials";
 import { buildUpstreamHeaders } from "@/lib/client-info";
 import { resolveImageModel } from "@/lib/models";
 
@@ -19,8 +22,8 @@ export async function POST(req: Request) {
   const creds = resolveCredentials(req);
   if (!creds) {
     return NextResponse.json(
-      { error: "缺少 API 凭证（环境变量或自定义凭证均未设置）" },
-      { status: 500 },
+      { error: MISSING_CREDENTIALS_ERROR },
+      { status: 401 },
     );
   }
   const { baseUrl, apiKey } = creds;

@@ -11,7 +11,7 @@ export type ImageModelOption = {
 };
 
 export const DEFAULT_IMAGE_MODEL = "gpt-image-2";
-export const DEFAULT_OPTIMIZE_MODEL = "gpt-5.5";
+export const DEFAULT_OPTIMIZE_MODEL = "gpt-6.1-sol";
 
 export const IMAGE_MODEL_OPTIONS: ImageModelOption[] = [
   {

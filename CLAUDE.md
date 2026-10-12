@@ -8,7 +8,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 「AI 图片工坊」：Next.js 16（App Router + Turbopack）+ React 19 + antd 6 + Tailwind 4 的单页应用。
 浏览器只跟本项目的 API 路由通信，路由再把请求转发到一个 OpenAI 兼容的上游服务
-（生图/改图默认 `gpt-image-2`，提示词优化默认 `gpt-5.5`）。另有 `/imagebed` 图床页（密码保护，永久存图）。
+（生图/改图默认 `gpt-image-2`，提示词优化默认 `gpt-6.1-sol`）。另有 `/imagebed` 图床页（密码保护，永久存图）。
 
 ## 常用命令
 
@@ -37,6 +37,7 @@ npm start        # 手动起 standalone —— 本机不要用，生产由 syste
 - `/api/optimize-prompt` → `{baseUrl}/v1/chat/completions`
 - `/api/upload` POST（表单带 `password` 且等于 `IMAGEBED_PASSWORD` 时写永久目录，否则写临时目录）/ DELETE（只删临时目录）
 - `/api/cleanup` 删除临时目录中 30 分钟以前的文件（按文件名里的时间戳判断）
+- 没填凭证时 `/api/generate`、`/api/edit`、`/api/optimize-prompt` 都返回 401。
 - 上游报错统一原样透传 `{ error, detail }`，前端靠 `isGenerateError()` 判别。
 
 **模型选择（`src/lib/models.ts`）**
@@ -48,8 +49,10 @@ npm start        # 手动起 standalone —— 本机不要用，生产由 syste
   （用自己 Key 的用户可能有别的模型名）。
 
 **凭证解析（`src/lib/api-credentials.ts`）**
-- 优先级：请求头 `x-image-api-base-url` / `x-image-api-key` → 环境变量 `IMAGE_API_BASE_URL` / `IMAGE_API_KEY`。
-- 前端 `useCustomApi()` 把用户在「自定义 API」弹窗里填的凭证存在 localStorage，每次请求通过 `buildHeaders()` 附到请求头；后端不持久化。
+- **只认请求头** `x-image-api-base-url` / `x-image-api-key`，不再回落到环境变量（2026-10-12 起）：用户没填自己的 BaseURL + Key 就不能用，
+  后端返回 401 + `MISSING_CREDENTIALS_ERROR`。`.env.local` 里的 `IMAGE_API_BASE_URL` / `IMAGE_API_KEY` 目前代码已不读取。
+- 前端 `useCustomApi()` 把用户在「API 与模型设置」弹窗里填的凭证存在 localStorage，每次请求通过 `buildHeaders()` 附到请求头；后端不持久化。
+  两项都填了就算可用（`enabled` 字段只为兼容旧数据，已无开关）；没填时页面显示提示条，生成/编辑/优化按钮禁用，点击会打开设置弹窗。
 
 **上传存储（`src/lib/upload-store.ts`）**
 - 文件名格式固定为 `<13位毫秒时间戳>-<uuid>.<png|jpg|webp>`，`UPLOAD_NAME_RE` 同时用于防路径穿越和清理判定。
