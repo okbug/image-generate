@@ -8,7 +8,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 「AI 图片工坊」：Next.js 16（App Router + Turbopack）+ React 19 + antd 6 + Tailwind 4 的单页应用。
 浏览器只跟本项目的 API 路由通信，路由再把请求转发到一个 OpenAI 兼容的上游服务
-（生图/改图默认 `gpt-image-2`，提示词优化默认 `gpt-6.1-sol`）。另有 `/imagebed` 图床页（密码保护，永久存图）。
+（生图/改图默认 `gpt-image-2.5-sunburst`，提示词优化默认 `gpt-6.1-sol`）。另有 `/imagebed` 图床页（密码保护，永久存图）。
 
 ## 常用命令
 
@@ -47,8 +47,8 @@ npm start        # 手动起 standalone —— 本机不要用，生产由 syste
 - 上游报错统一原样透传 `{ error, detail }`，前端靠 `isGenerateError()` 判别。
 
 **模型选择（`src/lib/models.ts`）**
-- 生图模型三档写死在 `IMAGE_MODEL_OPTIONS`：`gpt-image-2`（默认）/ `gpt-image-2.5-flare`（更快）/ `gpt-image-2.5-sunburst`（更精细），
-  下拉里带一句说明，加档只改这个数组即可（下拉两行说明靠 `globals.css` 里的 `.model-select-popup` 取消 antd 的单行截断）。
+- 生图模型三档写死在 `IMAGE_MODEL_OPTIONS`：`gpt-image-2.5-sunburst`（默认，更精细）/ `gpt-image-2`（最稳）/ `gpt-image-2.5-flare`（更快），
+  下拉里带一句说明，默认模型要放数组第一项（`findImageModel` 回落到 `[0]`），加档只改这个数组即可（下拉两行说明靠 `globals.css` 里的 `.model-select-popup` 取消 antd 的单行截断）。
 - 前端把选中的 model 放在 `/api/generate`、`/api/edit` 的请求体里；优化提示词的模型由用户在设置弹窗自由填写，
   存在 localStorage（`CustomApiSettings.optimizeModel`），随 `/api/optimize-prompt` 的 body 发过去。
 - 后端一律走 `resolveImageModel()` / `resolveOptimizeModel()`：空值、非字符串或超长都回落到默认模型，不做白名单校验
@@ -105,4 +105,5 @@ curl -sI http://127.0.0.1:3005 | head -1       # 200 即可
 ## 历史会话摘要（本机 `~/.claude/projects/-root-projects-image-generate/`）
 
 - 2026-08-03：给 Caddy 加了 `image.fe.sb` 并自动签证书；把参考图上限 3 → 10 并重新部署（踩了上面的 pkill 坑）。
+- 2026-10-23：`?mode=edit` 直达编辑 tab，上传上限 10M → 20M（`constants.ts`、`api/upload/route.ts`、`imagebed/page.tsx` 三处），超限弹 antd toast。部署时踩坑：`/root` 下有个空的 `package.json` + `package-lock.json`，Next 把 `/root` 当成工作区根，standalone 产物变成 `.next/standalone/projects/image-generate/server.js`，服务起不来；已在 `next.config.ts` 固定 `outputFileTracingRoot` / `turbopack.root`。同日又发现 `upload-store.ts` 两处 `path.join` 和 `api/upload` 两处 `mkdir` 漏了 `turbopackIgnore`，导致 build 警告「whole project was traced」、整个项目被拷进 standalone；补上后产物只剩 `server.js`/`node_modules`/`public`。
 - 2026-09-02：把项目打成 `image-generate.tar.gz`（排除 node_modules/.next/.git）供下载，顺手起了个 `python3 -m http.server 8765` 临时服务，可能仍在跑，不需要时 `ss -ltnp | grep 8765` 找到后关掉即可。`image-generate.tar.gz` 和 `public/image-generate.tar.gz` 都是这次留下的产物，不要提交。

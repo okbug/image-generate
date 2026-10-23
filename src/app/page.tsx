@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { use, useEffect, useRef, useState, useSyncExternalStore } from "react";
 
 import { CustomApiModal } from "@/components/CustomApiModal";
 import { ApiKeyNotice } from "@/components/workshop/ApiKeyNotice";
@@ -41,13 +41,30 @@ function noopSubscribe() {
   return () => {};
 }
 
-export default function Home() {
-  const [mode, setMode] = useState<Mode>(Mode.Generate);
+/** 编辑模式在 URL 上记 mode=edit，生成模式去掉该参数；用 replaceState 不产生历史记录。 */
+function syncModeToUrl(mode: Mode) {
+  const url = new URL(window.location.href);
+  if (mode === Mode.Edit) url.searchParams.set("mode", Mode.Edit);
+  else url.searchParams.delete("mode");
+  window.history.replaceState(window.history.state, "", url);
+}
+
+export default function Home({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  // URL 带 ?mode=edit 时直接进入编辑模式（刷新后保持在编辑 tab）
+  const initialMode =
+    use(searchParams).mode === Mode.Edit ? Mode.Edit : Mode.Generate;
+  const [mode, setMode] = useState<Mode>(initialMode);
   const [imageSource, setImageSource] = useState<ImageSource>(
     ImageSource.Upload,
   );
   const [externalUrl, setExternalUrl] = useState("");
-  const [prompt, setPrompt] = useState(PROMPT_PRESETS[0]);
+  const [prompt, setPrompt] = useState(
+    initialMode === Mode.Edit ? EDIT_DEFAULT_PROMPT : PROMPT_PRESETS[0],
+  );
   const [model, setModel] = useState(DEFAULT_IMAGE_MODEL);
   const [size, setSize] = useState(SIZE_OPTIONS[0].value);
   const [quality, setQuality] = useState(QUALITY_OPTIONS[0].value);
@@ -141,7 +158,12 @@ export default function Home() {
       const res = await fetch("/api/generate", {
         method: "POST",
         headers: buildHeaders({ "Content-Type": "application/json" }),
-        body: JSON.stringify({ prompt, model, size: usedSize, quality }),
+        body: JSON.stringify({
+          prompt,
+          model,
+          size: usedSize,
+          quality,
+        }),
       });
 
       const json = (await res.json()) as GenerateApiResult;
@@ -340,6 +362,7 @@ export default function Home() {
   function handleSwitchMode(next: Mode) {
     if (next === mode || loading || uploading) return;
     setMode(next);
+    syncModeToUrl(next);
     setError(null);
     // 切换模式时清理已上传图（避免遗留）
     if (uploadedImages.length > 0) clearUploadedImages();
@@ -408,6 +431,7 @@ export default function Home() {
               uploading={uploading}
               uploadProps={uploadProps}
               uploadedImages={uploadedImages}
+              uploadFileList={uploadFileList}
               onRemoveImage={removeUploadedImage}
               externalUrl={externalUrl}
               setExternalUrl={setExternalUrl}
@@ -477,7 +501,7 @@ export default function Home() {
         )}
 
         {!result && !error && !loading && (
-          <div className="glass flex min-h-[140px] flex-col items-center justify-center gap-2 rounded-2xl px-5 py-8 text-center text-sm text-zinc-500 dark:text-zinc-400 sm:min-h-[180px] sm:rounded-3xl sm:px-6 sm:py-10">
+          <div className="glass flex min-h-[140px] flex-col items-center justify-center gap-2 rounded-2xl px-5 py-8 text-center text-sm text-sand-500 dark:text-sand-400 sm:min-h-[180px] sm:rounded-3xl sm:px-6 sm:py-10">
             <span className="text-3xl">🎨</span>
             <p className="px-2">
               还没有作品。先写一段 prompt，点击「生成图片」开始吧。

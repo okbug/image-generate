@@ -31,22 +31,22 @@ function FormFields({
 }) {
   return (
     <div className="flex flex-col gap-4 pt-1">
-      <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-800 dark:border-amber-700/40 dark:bg-amber-500/10 dark:text-amber-200">
+      <div className="rounded-lg border border-clay-200 bg-clay-50 px-3 py-2 text-xs leading-relaxed text-clay-800 dark:border-clay-700/40 dark:bg-clay-500/10 dark:text-clay-200">
         <p>
           <span className="font-semibold">🔒 隐私说明：</span>
           本网站不会保存你的 BaseURL 与 API Key。它们只会保存在你浏览器的{" "}
-          <code className="rounded bg-amber-100/80 px-1 py-0.5 text-[11px] dark:bg-amber-500/20">
+          <code className="rounded bg-clay-100/80 px-1 py-0.5 text-[11px] dark:bg-clay-500/20">
             localStorage
           </code>
           ，每次请求时通过请求头临时转发到本站后端，再由后端调用你指定的上游
           API，请求结束即丢弃。
         </p>
-        <p className="mt-1.5 text-amber-700 dark:text-amber-300">
+        <p className="mt-1.5 text-clay-700 dark:text-clay-300">
           清除浏览器数据 / 退出隐私窗口后这些设置会消失，请妥善保管你的 Key。
         </p>
       </div>
 
-      <p className="text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">
+      <p className="text-xs leading-relaxed text-sand-500 dark:text-sand-400">
         本站不提供默认额度，生图和优化提示词都需要填写你自己的 API 地址和
         Key（两项都必填）。
       </p>
@@ -60,7 +60,7 @@ function FormFields({
             placeholder="例如 https://your-api-host.com"
             size="large"
           />
-          <span className="text-[11px] text-zinc-500 dark:text-zinc-400">
+          <span className="text-[11px] text-sand-500 dark:text-sand-400">
             填你自己的 OpenAI 兼容服务地址，不要带末尾斜杠，路径会自动拼接
             /v1/...
           </span>
@@ -78,7 +78,7 @@ function FormFields({
         </label>
       </div>
 
-      <label className="flex flex-col gap-1.5 border-t border-zinc-200/80 pt-4 dark:border-zinc-800">
+      <label className="flex flex-col gap-1.5 border-t border-sand-200/80 pt-4 dark:border-sand-800">
         <span className="text-sm font-medium">优化提示词模型</span>
         <Input
           value={optimizeModel}
@@ -87,9 +87,9 @@ function FormFields({
           size="large"
           autoComplete="off"
         />
-        <span className="text-[11px] leading-relaxed text-zinc-500 dark:text-zinc-400">
+        <span className="text-[11px] leading-relaxed text-sand-500 dark:text-sand-400">
           点「✨ 优化提示词」时调用的对话模型，留空即用默认的{" "}
-          <code className="rounded bg-zinc-100 px-1 py-0.5 text-[11px] dark:bg-zinc-800">
+          <code className="rounded bg-sand-100 px-1 py-0.5 text-[11px] dark:bg-sand-800">
             {DEFAULT_OPTIMIZE_MODEL}
           </code>
           （前提是你的上游支持该模型）。

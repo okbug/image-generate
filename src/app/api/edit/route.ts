@@ -5,7 +5,7 @@ import {
   resolveCredentials,
 } from "@/lib/api-credentials";
 import { buildUpstreamHeaders } from "@/lib/client-info";
-import { resolveImageModel } from "@/lib/models";
+import { resolveImageCount, resolveImageModel } from "@/lib/models";
 
 export const runtime = "nodejs";
 
@@ -16,6 +16,7 @@ type EditBody = {
   model?: string;
   size?: string;
   quality?: string;
+  n?: number;
 };
 
 export async function POST(req: Request) {
@@ -72,7 +73,7 @@ export async function POST(req: Request) {
     size: body.size ?? "1024x1024",
     quality: body.quality ?? "standard",
     output_format: "png" as const,
-    n: 1,
+    n: resolveImageCount(body.n),
   };
 
   let upstream: Response;

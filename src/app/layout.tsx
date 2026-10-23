@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist, Geist_Mono, Source_Serif_4 } from "next/font/google";
 import { AntdRegistry } from "@ant-design/nextjs-registry";
 import { AntdProvider } from "@/components/AntdProvider";
 import "./globals.css";
@@ -14,6 +14,12 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+// 标题用的衬线体，中文回落到系统宋体（见 globals.css 的 --font-serif）
+const sourceSerif = Source_Serif_4({
+  variable: "--font-source-serif",
+  subsets: ["latin"],
+});
+
 export const metadata: Metadata = {
   title: "AI 图片工坊",
   description: "用一句话生成专属画作",
@@ -24,8 +30,8 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 5,
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#fafafa" },
-    { media: "(prefers-color-scheme: dark)", color: "#0a0a0f" },
+    { media: "(prefers-color-scheme: light)", color: "#faf9f5" },
+    { media: "(prefers-color-scheme: dark)", color: "#262624" },
   ],
 };
 
@@ -35,9 +41,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
+    // 下面的内联脚本会在 hydrate 前给 <html> 加 dark 类，属预期差异
     <html
       lang="zh-CN"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      suppressHydrationWarning
+      className={`${geistSans.variable} ${geistMono.variable} ${sourceSerif.variable} h-full antialiased`}
     >
       <head>
         <script

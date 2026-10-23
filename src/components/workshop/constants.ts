@@ -18,22 +18,28 @@ export const QUALITY_OPTIONS = [
 ];
 
 export const PROMPT_PRESETS = [
-  "黄昏海边的玻璃小屋，落地窗映着粉橙色晚霞，宫崎骏风格水彩",
-  "一只在月球上喝咖啡的柴犬，复古胶片质感",
-  "巨大鲸鱼在云海中游弋，吉卜力梦幻场景，柔光",
-  "京都樱花小巷，黄昏阳光斜照，浮世绘水彩",
+  "雨夜东京街角的拉面摊，霓虹灯倒映在湿漉漉的石板路上，电影感胶片色调",
+  "戴圆框眼镜的橘猫在旧书店里打盹，午后阳光穿过木窗，温暖治愈系插画",
+  "漂浮在云端的蒸汽朋克图书馆，黄铜齿轮与彩绘玻璃穹顶，细节丰富",
+  "极简产品摄影：琥珀色香水瓶立在米白色石台上，柔和侧光，干净背景",
+  "冰岛黑沙滩上的极光之夜，一个人提着灯笼远眺，超广角，壮阔而静谧",
+  "敦煌飞天风格的宇航员，飘带与星云交织，金色与青绿配色，壁画质感",
+  "微缩模型风格的江南水乡清晨，乌篷船穿过石拱桥，移轴摄影效果",
+  "80 年代日系城市流行唱片封面，海边公路、粉紫色夕阳与一辆白色跑车",
 ];
 
 export const EDIT_DEFAULT_PROMPT =
   "提升画面清晰度与细节，让色彩更鲜明、画面更锐利";
 export const MAX_UPLOAD_COUNT = 10;
 export const UPLOAD_ACCEPT = "image/png,image/jpeg,image/webp";
-export const MAX_UPLOAD_SIZE = 10 * 1024 * 1024;
+export const MAX_UPLOAD_SIZE = 20 * 1024 * 1024;
 
 export type RenderedItem = {
   src: string;
   revisedPrompt?: string;
   ext: string;
+  /** 图片文件字节数；上游只给 URL 时拿不到，为 undefined。 */
+  bytes?: number;
 };
 
 export enum Mode {
@@ -77,7 +83,7 @@ export function validateUploadFile(file: File): string | null {
     return "仅支持 PNG / JPG / WebP";
   }
   if (file.size > MAX_UPLOAD_SIZE) {
-    return "图片不能超过 10MB";
+    return `图片不能超过 ${MAX_UPLOAD_SIZE / 1024 / 1024}MB`;
   }
   return null;
 }

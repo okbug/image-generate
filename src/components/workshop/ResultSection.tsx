@@ -26,6 +26,7 @@ export function toRenderedItems(
           src: `data:${mime};base64,${item.b64_json}`,
           revisedPrompt: item.revised_prompt,
           ext,
+          bytes: base64ByteLength(item.b64_json),
         },
       ];
     }
@@ -34,6 +35,18 @@ export function toRenderedItems(
     }
     return [];
   });
+}
+
+/** base64 解码后的字节数：每 4 个字符 3 字节，再扣掉末尾的 = 填充。 */
+function base64ByteLength(b64: string): number {
+  const padding = b64.endsWith("==") ? 2 : b64.endsWith("=") ? 1 : 0;
+  return Math.floor((b64.length * 3) / 4) - padding;
+}
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
 }
 
 /** 出图结果：概要信息 + 每张图一张卡片。 */
@@ -52,7 +65,11 @@ export function ResultSection({
 }) {
   return (
     <section className="flex flex-col gap-5">
-      <ResultMeta result={result} durationMs={lastDurationMs} />
+      <ResultMeta
+        result={result}
+        renderedItems={renderedItems}
+        durationMs={lastDurationMs}
+      />
       <div
         className={`grid gap-4 ${
           renderedItems.length > 1
@@ -77,14 +94,20 @@ export function ResultSection({
 
 function ResultMeta({
   result,
+  renderedItems,
   durationMs,
 }: {
   result: ImagesGenerationsResponse;
+  renderedItems: RenderedItem[];
   durationMs: number | null;
 }) {
   const usage = result.usage;
+  // 只要有一张拿不到大小（URL 返回），就不显示合计，免得数字偏小
+  const totalBytes = renderedItems.every((item) => item.bytes !== undefined)
+    ? renderedItems.reduce((sum, item) => sum + (item.bytes ?? 0), 0)
+    : null;
   return (
-    <div className="glass flex flex-wrap items-center gap-x-4 gap-y-2 rounded-2xl p-3 text-xs text-zinc-600 dark:text-zinc-400 sm:gap-x-6 sm:p-4">
+    <div className="glass flex flex-wrap items-center gap-x-4 gap-y-2 rounded-2xl p-3 text-xs text-sand-600 dark:text-sand-400 sm:gap-x-6 sm:p-4">
       <MetaPill label="模型" value={result.model ?? "-"} />
       <MetaPill label="尺寸" value={result.size ?? "-"} />
       {result.quality && <MetaPill label="质量" value={result.quality} />}
@@ -92,6 +115,12 @@ function ResultMeta({
         <MetaPill
           label="格式"
           value={String(result.output_format).toUpperCase()}
+        />
+      )}
+      {totalBytes !== null && totalBytes > 0 && (
+        <MetaPill
+          label={renderedItems.length > 1 ? "总大小" : "大小"}
+          value={formatBytes(totalBytes)}
         />
       )}
       {durationMs !== null && (
@@ -105,8 +134,8 @@ function ResultMeta({
 function MetaPill({ label, value }: { label: string; value: string }) {
   return (
     <span className="inline-flex items-center gap-1.5">
-      <span className="text-zinc-500 dark:text-zinc-500">{label}</span>
-      <span className="font-medium text-zinc-800 dark:text-zinc-200">
+      <span className="text-sand-500 dark:text-sand-500">{label}</span>
+      <span className="font-medium text-sand-800 dark:text-sand-200">
         {value}
       </span>
     </span>
@@ -115,9 +144,9 @@ function MetaPill({ label, value }: { label: string; value: string }) {
 
 function UsageInfo({ usage }: { usage: ImageUsage }) {
   return (
-    <span className="inline-flex w-full items-center gap-1.5 rounded-full bg-zinc-100/80 px-2.5 py-1 dark:bg-zinc-800/60 sm:ml-auto sm:w-auto">
-      <span className="text-zinc-500 dark:text-zinc-500">tokens</span>
-      <span className="font-medium text-zinc-800 dark:text-zinc-200">
+    <span className="inline-flex w-full items-center gap-1.5 rounded-full bg-sand-100/80 px-2.5 py-1 dark:bg-sand-800/60 sm:ml-auto sm:w-auto">
+      <span className="text-sand-500 dark:text-sand-500">tokens</span>
+      <span className="font-medium text-sand-800 dark:text-sand-200">
         输入 {usage.input_tokens} · 输出 {usage.output_tokens} · 总{" "}
         {usage.total_tokens}
       </span>
@@ -151,8 +180,13 @@ function ResultCard({
       />
       <figcaption className="flex flex-col gap-3 p-4 sm:px-5 sm:py-4">
         <div className="flex items-center justify-between text-xs">
-          <span className="font-medium text-zinc-700 dark:text-zinc-300">
+          <span className="font-medium text-sand-700 dark:text-sand-300">
             #{index + 1} 作品
+            {item.bytes !== undefined && (
+              <span className="ml-2 font-normal text-sand-500 dark:text-sand-500">
+                {formatBytes(item.bytes)}
+              </span>
+            )}
           </span>
           <div className="flex items-center gap-2">
             <button
@@ -160,14 +194,14 @@ function ResultCard({
               onClick={onEdit}
               disabled={editDisabled}
               title="把这张图作为参考图，继续修改"
-              className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-indigo-200 bg-indigo-50/70 px-3.5 text-xs font-medium text-indigo-700 transition active:scale-95 hover:border-indigo-300 hover:bg-indigo-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-indigo-500/40 dark:bg-indigo-500/10 dark:text-indigo-300 dark:hover:border-indigo-400/60 dark:hover:bg-indigo-500/20"
+              className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-clay-200 bg-clay-50/70 px-3.5 text-xs font-medium text-clay-700 transition active:scale-95 hover:border-clay-300 hover:bg-clay-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-clay-500/40 dark:bg-clay-500/10 dark:text-clay-300 dark:hover:border-clay-400/60 dark:hover:bg-clay-500/20"
             >
               ✏️ 编辑该图片
             </button>
             <a
               href={item.src}
               download={fileName}
-              className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-zinc-900 px-3.5 text-xs font-medium text-white transition active:scale-95 hover:bg-zinc-700 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200"
+              className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-sand-900 px-3.5 text-xs font-medium text-white transition active:scale-95 hover:bg-sand-700 dark:bg-white dark:text-sand-900 dark:hover:bg-sand-200"
             >
               ↓ 下载
             </a>
@@ -178,15 +212,15 @@ function ResultCard({
           <details
             open={expanded}
             onToggle={(e) => setExpanded((e.target as HTMLDetailsElement).open)}
-            className="group rounded-xl border border-zinc-200/80 bg-white/50 p-3 text-xs leading-relaxed text-zinc-600 transition dark:border-zinc-800 dark:bg-zinc-900/40 dark:text-zinc-300"
+            className="group rounded-xl border border-sand-200/80 bg-white/50 p-3 text-xs leading-relaxed text-sand-600 transition dark:border-sand-800 dark:bg-sand-900/40 dark:text-sand-300"
           >
-            <summary className="cursor-pointer list-none font-medium text-zinc-700 marker:hidden dark:text-zinc-200">
+            <summary className="cursor-pointer list-none font-medium text-sand-700 marker:hidden dark:text-sand-200">
               <span className="inline-flex items-center gap-1.5">
                 <span className="transition group-open:rotate-90">▸</span>
                 模型改写后的 Prompt
               </span>
             </summary>
-            <p className="mt-2 whitespace-pre-wrap text-zinc-600 dark:text-zinc-400">
+            <p className="mt-2 whitespace-pre-wrap text-sand-600 dark:text-sand-400">
               {item.revisedPrompt}
             </p>
           </details>

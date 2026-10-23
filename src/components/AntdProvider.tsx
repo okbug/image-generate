@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ConfigProvider, theme } from "antd";
+import { App, ConfigProvider, theme } from "antd";
 import zhCN from "antd/locale/zh_CN";
 
 function useIsDark(): boolean {
@@ -31,9 +31,17 @@ export function AntdProvider({ children }: { children: React.ReactNode }) {
       locale={zhCN}
       theme={{
         algorithm: isDark ? theme.darkAlgorithm : theme.defaultAlgorithm,
+        // Claude 风格：陶土橙主色 + 暖色中性底，深色模式用炭灰
         token: {
-          colorPrimary: "#6366f1",
-          colorInfo: "#6366f1",
+          colorPrimary: isDark ? "#d97757" : "#c96442",
+          colorInfo: isDark ? "#d97757" : "#c96442",
+          colorLink: isDark ? "#d97757" : "#c96442",
+          colorBgContainer: isDark ? "#30302e" : "#ffffff",
+          colorBgElevated: isDark ? "#30302e" : "#ffffff",
+          colorBgLayout: isDark ? "#262624" : "#faf9f5",
+          colorBorder: isDark ? "#3d3d3a" : "#e8e6dc",
+          colorBorderSecondary: isDark ? "#3d3d3a" : "#f0eee6",
+          colorText: isDark ? "#faf9f5" : "#1f1e1d",
           borderRadius: 12,
           fontFamily:
             "var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif",
@@ -45,7 +53,8 @@ export function AntdProvider({ children }: { children: React.ReactNode }) {
         },
       }}
     >
-      {children}
+      {/* App 提供带主题上下文的 message / modal；它会包一层 div，让这层继续撑满 body 的 flex 布局 */}
+      <App className="flex flex-1 flex-col">{children}</App>
     </ConfigProvider>
   );
 }

@@ -32,12 +32,12 @@ export function getUploadPermanentDir(): string {
 
 export function resolveUploadFilePath(fileName: string): string | null {
   if (!UPLOAD_NAME_RE.test(fileName)) return null;
-  return path.join(getUploadTmpDir(), fileName);
+  return path.join(/*turbopackIgnore: true*/ getUploadTmpDir(), fileName);
 }
 
 export function resolvePermanentFilePath(fileName: string): string | null {
   if (!UPLOAD_NAME_RE.test(fileName)) return null;
-  return path.join(getUploadPermanentDir(), fileName);
+  return path.join(/*turbopackIgnore: true*/ getUploadPermanentDir(), fileName);
 }
 
 export function getUploadMime(fileName: string): string {

@@ -5,7 +5,7 @@ import {
   resolveCredentials,
 } from "@/lib/api-credentials";
 import { buildUpstreamHeaders } from "@/lib/client-info";
-import { resolveImageModel } from "@/lib/models";
+import { resolveImageCount, resolveImageModel } from "@/lib/models";
 import type { GenerateRequestBody } from "@/types/images";
 
 export const runtime = "nodejs";
@@ -41,7 +41,7 @@ export async function POST(req: Request) {
     size: body.size ?? "1792x1024",
     quality: body.quality ?? "standard",
     response_format: "b64_json" as const,
-    n: Math.min(Math.max(body.n ?? 1, 1), 4),
+    n: resolveImageCount(body.n),
   };
 
   let upstream: Response;

@@ -6,7 +6,7 @@ import { UploadCloud, X, Lock, Unlock, Image as ImageIcon } from "lucide-react";
 
 const MAX_UPLOAD_COUNT = 10;
 const UPLOAD_ACCEPT = "image/png,image/jpeg,image/webp";
-const MAX_UPLOAD_SIZE = 10 * 1024 * 1024;
+const MAX_UPLOAD_SIZE = 20 * 1024 * 1024;
 
 type UploadedImage = {
   uid: string;
@@ -30,7 +30,7 @@ export default function ImageBedPage() {
       return "仅支持 PNG / JPG / WebP";
     }
     if (file.size > MAX_UPLOAD_SIZE) {
-      return "图片不能超过 10MB";
+      return "图片不能超过 20MB";
     }
     return null;
   }
@@ -182,14 +182,14 @@ export default function ImageBedPage() {
       <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 md:gap-10">
         <header className="flex flex-col gap-3">
           <div className="flex items-center gap-3">
-            <div className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white shadow-lg">
+            <div className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-clay-600 dark:bg-clay-500 text-white shadow-sm">
               <ImageIcon className="h-6 w-6" />
             </div>
             <div>
               <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">
-                <span className="gradient-text">图床服务</span>
+                <span className="brand-title">图床服务</span>
               </h1>
-              <p className="text-sm text-zinc-600 dark:text-zinc-400">
+              <p className="text-sm text-sand-600 dark:text-sand-400">
                 上传图片获取公网访问地址
               </p>
             </div>
@@ -199,7 +199,7 @@ export default function ImageBedPage() {
         {!isUnlocked ? (
           <div className="glass rounded-2xl p-6 sm:rounded-3xl sm:p-8">
             <div className="flex flex-col gap-4">
-              <div className="flex items-center gap-3 text-amber-600 dark:text-amber-400">
+              <div className="flex items-center gap-3 text-clay-600 dark:text-clay-400">
                 <Lock className="h-5 w-5" />
                 <span className="font-medium">需要密码验证</span>
               </div>
@@ -209,7 +209,7 @@ export default function ImageBedPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="请输入密码"
-                  className="flex-1 h-12 rounded-xl border border-zinc-200 bg-white/80 px-4 text-base text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-indigo-400 focus:ring-4 focus:ring-indigo-400/10 dark:border-zinc-700 dark:bg-zinc-900/60 dark:text-zinc-100 dark:placeholder:text-zinc-500"
+                  className="flex-1 h-12 rounded-xl border border-sand-200 bg-white/80 px-4 text-base text-sand-900 outline-none transition placeholder:text-sand-400 focus:border-clay-400 focus:ring-4 focus:ring-clay-400/10 dark:border-sand-700 dark:bg-sand-900/60 dark:text-sand-100 dark:placeholder:text-sand-500"
                   onKeyDown={(e) => {
                     if (e.key === "Enter") handleUnlock();
                   }}
@@ -218,7 +218,7 @@ export default function ImageBedPage() {
                   type="button"
                   onClick={handleUnlock}
                   disabled={!password.trim()}
-                  className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 px-6 text-sm font-semibold text-white shadow-lg shadow-purple-500/20 transition active:scale-[0.98] hover:shadow-purple-500/40 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-clay-600 dark:bg-clay-500 px-6 text-sm font-semibold text-white shadow-sm transition active:scale-[0.98] hover:bg-clay-700 dark:hover:bg-clay-400 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <Unlock className="h-4 w-4" />
                   解锁
@@ -238,7 +238,7 @@ export default function ImageBedPage() {
               <button
                 type="button"
                 onClick={handleLock}
-                className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-zinc-200 bg-white/70 px-3 text-xs text-zinc-700 transition active:scale-95 hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-900/60 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-sand-200 bg-white/70 px-3 text-xs text-sand-700 transition active:scale-95 hover:bg-sand-100 dark:border-sand-700 dark:bg-sand-900/60 dark:text-sand-300 dark:hover:bg-sand-800"
               >
                 <Lock className="h-3.5 w-3.5" />
                 重新锁定
@@ -250,15 +250,15 @@ export default function ImageBedPage() {
                 <Upload.Dragger {...uploadProps}>
                   <div className="flex flex-col items-center gap-3 px-4 py-6 text-center">
                     {uploading ? (
-                      <span className="h-8 w-8 animate-spin rounded-full border-3 border-indigo-500 border-t-transparent" />
+                      <span className="h-8 w-8 animate-spin rounded-full border-3 border-clay-500 border-t-transparent" />
                     ) : (
-                      <UploadCloud className="h-10 w-10 text-indigo-500" />
+                      <UploadCloud className="h-10 w-10 text-clay-500" />
                     )}
-                    <span className="text-base font-medium text-zinc-800 dark:text-zinc-100">
+                    <span className="text-base font-medium text-sand-800 dark:text-sand-100">
                       点击、拖拽或粘贴图片
                     </span>
-                    <span className="text-sm leading-relaxed text-zinc-500 dark:text-zinc-400">
-                      支持 PNG / JPG / WebP，单张最大 10MB，最多{" "}
+                    <span className="text-sm leading-relaxed text-sand-500 dark:text-sand-400">
+                      支持 PNG / JPG / WebP，单张最大 20MB，最多{" "}
                       {MAX_UPLOAD_COUNT} 张
                     </span>
                   </div>
@@ -266,7 +266,7 @@ export default function ImageBedPage() {
 
                 {uploadedImages.length > 0 && (
                   <div className="flex flex-col gap-3 mt-4">
-                    <div className="flex items-center justify-between text-sm text-zinc-600 dark:text-zinc-400">
+                    <div className="flex items-center justify-between text-sm text-sand-600 dark:text-sand-400">
                       <span>
                         已上传 {uploadedImages.length}/{MAX_UPLOAD_COUNT}
                       </span>
@@ -289,7 +289,7 @@ export default function ImageBedPage() {
                       {uploadedImages.map((image, idx) => (
                         <div
                           key={image.uid}
-                          className="group relative overflow-hidden rounded-xl border border-zinc-200 bg-white/70 dark:border-zinc-700 dark:bg-zinc-900/50"
+                          className="group relative overflow-hidden rounded-xl border border-sand-200 bg-white/70 dark:border-sand-700 dark:bg-sand-900/50"
                         >
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
@@ -312,23 +312,23 @@ export default function ImageBedPage() {
                                 );
                               });
                             }}
-                            className="absolute top-2 right-2 inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/70 bg-zinc-950/70 text-white shadow-sm transition hover:bg-red-600"
+                            className="absolute top-2 right-2 inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/70 bg-sand-950/70 text-white shadow-sm transition hover:bg-red-600"
                           >
                             <X className="h-4 w-4" />
                           </button>
                           <div className="flex flex-col gap-2 px-4 py-3">
                             <div className="flex items-center justify-between">
-                              <span className="text-xs font-medium text-zinc-800 dark:text-zinc-200">
+                              <span className="text-xs font-medium text-sand-800 dark:text-sand-200">
                                 图片 #{idx + 1}
                               </span>
-                              <span className="text-xs text-zinc-500">
+                              <span className="text-xs text-sand-500">
                                 {formatFileSize(image.size)}
                               </span>
                             </div>
                             <button
                               type="button"
                               onClick={() => copyToClipboard(image.url)}
-                              className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg bg-indigo-500 px-3 text-xs font-medium text-white transition active:scale-95 hover:bg-indigo-600"
+                              className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg bg-clay-500 px-3 text-xs font-medium text-white transition active:scale-95 hover:bg-clay-600"
                             >
                               复制链接
                             </button>
@@ -336,7 +336,7 @@ export default function ImageBedPage() {
                               type="text"
                               value={image.url}
                               readOnly
-                              className="w-full rounded-lg border border-zinc-200 bg-zinc-50 px-2 py-1.5 text-[10px] text-zinc-600 outline-none dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-400"
+                              className="w-full rounded-lg border border-sand-200 bg-sand-50 px-2 py-1.5 text-[10px] text-sand-600 outline-none dark:border-sand-700 dark:bg-sand-900 dark:text-sand-400"
                               onClick={(e) => e.currentTarget.select()}
                             />
                           </div>
@@ -348,9 +348,9 @@ export default function ImageBedPage() {
               </div>
             </div>
 
-            <div className="rounded-xl border border-zinc-200/80 bg-zinc-50/80 px-4 py-3 text-xs text-zinc-600 dark:border-zinc-700/70 dark:bg-zinc-900/40 dark:text-zinc-400">
+            <div className="rounded-xl border border-sand-200/80 bg-sand-50/80 px-4 py-3 text-xs text-sand-600 dark:border-sand-700/70 dark:bg-sand-900/40 dark:text-sand-400">
               <p className="font-medium mb-1">使用说明：</p>
-              <ul className="list-disc list-inside space-y-1 text-zinc-500 dark:text-zinc-500">
+              <ul className="list-disc list-inside space-y-1 text-sand-500 dark:text-sand-500">
                 <li>上传的图片将永久存储在服务器</li>
                 <li>支持拖拽上传和粘贴上传（Ctrl/Cmd + V）</li>
                 <li>点击「复制链接」可直接复制图片地址</li>

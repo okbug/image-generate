@@ -47,7 +47,7 @@ export function GenerationOptions({
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-col gap-2">
-        <span className="text-sm font-medium text-zinc-800 dark:text-zinc-200">
+        <span className="text-sm font-medium text-sand-800 dark:text-sand-200">
           模型
         </span>
         <Select
@@ -61,11 +61,11 @@ export function GenerationOptions({
               <div className="flex flex-col gap-0.5 py-1">
                 <span className="flex items-center gap-1.5 text-sm font-medium">
                   {data.label}
-                  <span className="rounded-full bg-indigo-50 px-1.5 py-0.5 text-[10px] font-medium text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-300">
+                  <span className="rounded-full bg-clay-50 px-1.5 py-0.5 text-[10px] font-medium text-clay-600 dark:bg-clay-500/15 dark:text-clay-300">
                     {data.tag}
                   </span>
                 </span>
-                <span className="text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">
+                <span className="text-xs leading-relaxed text-sand-500 dark:text-sand-400">
                   {data.description}
                 </span>
               </div>
@@ -76,13 +76,13 @@ export function GenerationOptions({
           className="w-full"
           disabled={loading}
         />
-        <p className="text-[11px] leading-relaxed text-zinc-500 dark:text-zinc-500">
+        <p className="text-[11px] leading-relaxed text-sand-500 dark:text-sand-500">
           {activeModel.tag} · {activeModel.description}
         </p>
       </div>
 
       <div className="flex flex-col gap-2">
-        <span className="text-sm font-medium text-zinc-800 dark:text-zinc-200">
+        <span className="text-sm font-medium text-sand-800 dark:text-sand-200">
           尺寸
         </span>
         <Select
@@ -96,7 +96,7 @@ export function GenerationOptions({
       </div>
 
       <div className="flex flex-col gap-2">
-        <span className="text-sm font-medium text-zinc-800 dark:text-zinc-200">
+        <span className="text-sm font-medium text-sand-800 dark:text-sand-200">
           质量
         </span>
         <Select
@@ -110,9 +110,9 @@ export function GenerationOptions({
       </div>
 
       {size === "custom" && (
-        <div className="grid grid-cols-2 gap-3 rounded-xl border border-dashed border-indigo-200 bg-indigo-50/40 p-3 dark:border-indigo-500/30 dark:bg-indigo-500/5">
+        <div className="grid grid-cols-2 gap-3 rounded-xl border border-dashed border-clay-200 bg-clay-50/40 p-3 dark:border-clay-500/30 dark:bg-clay-500/5">
           <label className="flex flex-col gap-1.5">
-            <span className="text-xs font-medium text-zinc-700 dark:text-zinc-300">
+            <span className="text-xs font-medium text-sand-700 dark:text-sand-300">
               宽度（px）
             </span>
             <input
@@ -124,11 +124,11 @@ export function GenerationOptions({
               value={customWidth}
               onChange={(e) => setCustomWidth(Number(e.target.value) || 0)}
               onBlur={(e) => setCustomWidth(clampSide(Number(e.target.value)))}
-              className="h-10 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm text-zinc-900 outline-none transition focus:border-indigo-400 focus:ring-4 focus:ring-indigo-400/10 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+              className="h-10 w-full rounded-lg border border-sand-200 bg-white px-3 text-sm text-sand-900 outline-none transition focus:border-clay-400 focus:ring-4 focus:ring-clay-400/10 dark:border-sand-700 dark:bg-sand-900 dark:text-sand-100"
             />
           </label>
           <label className="flex flex-col gap-1.5">
-            <span className="text-xs font-medium text-zinc-700 dark:text-zinc-300">
+            <span className="text-xs font-medium text-sand-700 dark:text-sand-300">
               高度（px）
             </span>
             <input
@@ -140,10 +140,10 @@ export function GenerationOptions({
               value={customHeight}
               onChange={(e) => setCustomHeight(Number(e.target.value) || 0)}
               onBlur={(e) => setCustomHeight(clampSide(Number(e.target.value)))}
-              className="h-10 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm text-zinc-900 outline-none transition focus:border-indigo-400 focus:ring-4 focus:ring-indigo-400/10 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+              className="h-10 w-full rounded-lg border border-sand-200 bg-white px-3 text-sm text-sand-900 outline-none transition focus:border-clay-400 focus:ring-4 focus:ring-clay-400/10 dark:border-sand-700 dark:bg-sand-900 dark:text-sand-100"
             />
           </label>
-          <p className="col-span-2 text-[11px] text-zinc-500 dark:text-zinc-400">
+          <p className="col-span-2 text-[11px] text-sand-500 dark:text-sand-400">
             范围 {CUSTOM_SIZE_MIN}–{CUSTOM_SIZE_MAX}px，建议 64 的倍数。
           </p>
         </div>

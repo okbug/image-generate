@@ -1,6 +1,6 @@
 "use client";
 
-import { Timer } from "lucide-react";
+import { KeyRound, Sparkles, Timer } from "lucide-react";
 
 import { formatDuration } from "@/lib/use-timings";
 
@@ -23,11 +23,11 @@ export function SubmitBar({
   disabled: boolean;
 }) {
   return (
-    <div className="flex flex-col gap-3 border-t border-zinc-200/70 pt-4 dark:border-zinc-800/70 sm:flex-row sm:items-center sm:justify-between">
-      <span className="text-xs text-zinc-500 dark:text-zinc-500">
+    <div className="flex flex-col gap-3 border-t border-sand-200/70 pt-4 dark:border-sand-800/70 sm:flex-row sm:items-center sm:justify-between">
+      <span className="text-xs text-sand-500 dark:text-sand-500">
         {loading ? (
           <span className="inline-flex flex-wrap items-center gap-x-1.5 gap-y-1">
-            <span className="inline-flex items-center gap-1.5 font-semibold tabular-nums text-indigo-600 dark:text-indigo-300">
+            <span className="inline-flex items-center gap-1.5 font-semibold tabular-nums text-clay-600 dark:text-clay-300">
               <Timer className="h-3.5 w-3.5 animate-pulse" />
               已用 {formatDuration(elapsedMs)}
             </span>
@@ -35,7 +35,7 @@ export function SubmitBar({
           </span>
         ) : lastDurationMs !== null ? (
           <span className="inline-flex flex-wrap items-center gap-x-1.5 gap-y-1">
-            <span className="inline-flex items-center gap-1.5 font-medium tabular-nums text-zinc-700 dark:text-zinc-300">
+            <span className="inline-flex items-center gap-1.5 font-medium tabular-nums text-sand-700 dark:text-sand-300">
               <Timer className="h-3.5 w-3.5" />
               上次耗时 {formatDuration(lastDurationMs)}
             </span>
@@ -48,7 +48,7 @@ export function SubmitBar({
       <button
         type="submit"
         disabled={disabled}
-        className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 px-6 text-sm font-semibold text-white shadow-lg shadow-purple-500/20 transition active:scale-[0.98] hover:shadow-purple-500/40 disabled:cursor-not-allowed disabled:opacity-50 sm:h-11 sm:w-auto"
+        className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-clay-600 dark:bg-clay-500 px-6 text-sm font-semibold text-white shadow-sm transition active:scale-[0.98] hover:bg-clay-700 dark:hover:bg-clay-400 disabled:cursor-not-allowed disabled:opacity-50 sm:h-11 sm:w-auto"
       >
         {loading ? (
           <>
@@ -57,9 +57,15 @@ export function SubmitBar({
             <span className="tabular-nums">{formatDuration(elapsedMs)}</span>
           </>
         ) : needCustomApi ? (
-          <>🔑 请先填写 API</>
+          <>
+            <KeyRound className="h-4 w-4" />
+            请先填写 API
+          </>
         ) : (
-          <>✨ {mode === Mode.Edit ? "编辑图片" : "生成图片"}</>
+          <>
+            <Sparkles className="h-4 w-4" />
+            {mode === Mode.Edit ? "编辑图片" : "生成图片"}
+          </>
         )}
       </button>
     </div>
