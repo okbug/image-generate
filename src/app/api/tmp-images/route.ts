@@ -2,11 +2,11 @@ import { NextResponse } from "next/server";
 import { readdir, stat } from "node:fs/promises";
 
 import {
-  IMAGEBED_PASSWORD,
   UPLOAD_EXPIRY_MS,
   UPLOAD_NAME_RE,
   UPLOAD_TMP_ROUTE,
   getUploadTmpDir,
+  isImagebedPassword,
   resolveUploadFilePath,
 } from "@/lib/upload-store";
 
@@ -40,7 +40,7 @@ export async function POST(req: Request) {
     );
   }
 
-  if (password !== IMAGEBED_PASSWORD) {
+  if (!isImagebedPassword(password)) {
     await new Promise((resolve) =>
       setTimeout(resolve, WRONG_PASSWORD_DELAY_MS),
     );

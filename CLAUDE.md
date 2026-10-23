@@ -65,7 +65,8 @@ npm start        # 手动起 standalone —— 本机不要用，生产由 syste
 - 目录由 `UPLOAD_TMP_DIR` / `UPLOAD_PERMANENT_DIR` 决定，缺省为 `process.cwd()/public/images/{tmp,permanent}`。
 - 图片通过 `/images/tmp/[name]` 和 `/images/permanent/[name]` 两个 route handler 读盘返回，而不是当 Next 静态资源——运行时新增的文件不在构建产物里，走静态资源会 404。
 - 所有 `fs`/`path` 调用都带 `/*turbopackIgnore: true*/` 注释，避免 Turbopack 把整个项目追踪进产物；新增文件系统操作要沿用。
-- 图床密码硬编码在 `upload-store.ts`（`IMAGEBED_PASSWORD`）和 `src/app/imagebed/page.tsx` 两处。
+- 图床密码放在 `.env.local` 的 `IMAGEBED_PASSWORD`（不入库），只在服务端用 `isImagebedPassword()` 比对：`/api/imagebed/unlock`（图床页解锁）、`/api/upload`（永久存图）、`/api/tmp-images`。没配置时一律不通过。
+- `/demo` 的演示凭证在 `.env.local` 的 `DEMO_API_BASE_URL` / `DEMO_API_KEY`，访问密码是北京时间当天 `YYYYMMDD`，由 `/api/demo/unlock` 校验后下发。
 
 **UI 层**
 - `AntdProvider` 用 MutationObserver 监听 `<html class="dark">` 切换 antd 主题；`layout.tsx` 内联脚本按系统偏好加 `dark` 类。antd 通过 `@ant-design/nextjs-registry` 注入样式。

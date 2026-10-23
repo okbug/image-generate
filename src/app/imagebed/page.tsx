@@ -39,11 +39,21 @@ export default function ImageBedPage() {
     setUploadFileList(nextFileList.slice(0, MAX_UPLOAD_COUNT));
   }
 
-  function handleUnlock() {
-    if (password === process.env.NEXT_PUBLIC_IMAGEBED_PASSWORD) {
-      setIsUnlocked(true);
-    } else {
-      alert("密码错误");
+  // 密码只在服务端比对，前端代码里不出现密码
+  async function handleUnlock() {
+    try {
+      const res = await fetch("/api/imagebed/unlock", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password }),
+      });
+      if (res.ok) {
+        setIsUnlocked(true);
+      } else {
+        alert("密码错误");
+      }
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "未知错误");
     }
   }
 
@@ -211,7 +221,7 @@ export default function ImageBedPage() {
                   placeholder="请输入密码"
                   className="flex-1 h-12 rounded-xl border border-sand-200 bg-white/80 px-4 text-base text-sand-900 outline-none transition placeholder:text-sand-400 focus:border-clay-400 focus:ring-4 focus:ring-clay-400/10 dark:border-sand-700 dark:bg-sand-900/60 dark:text-sand-100 dark:placeholder:text-sand-500"
                   onKeyDown={(e) => {
-                    if (e.key === "Enter") handleUnlock();
+                    if (e.key === "Enter") void handleUnlock();
                   }}
                 />
                 <button

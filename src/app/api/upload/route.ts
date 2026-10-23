@@ -6,9 +6,9 @@ import {
   UPLOAD_PERMANENT_ROUTE,
   getUploadTmpDir,
   getUploadPermanentDir,
+  isImagebedPassword,
   resolveUploadFilePath,
   resolvePermanentFilePath,
-  IMAGEBED_PASSWORD,
 } from "@/lib/upload-store";
 
 export const runtime = "nodejs";
@@ -47,7 +47,7 @@ export async function POST(req: Request) {
 
   // 检查是否为图床模式（需要密码）
   const password = form.get("password");
-  const isPermanentMode = password === IMAGEBED_PASSWORD;
+  const isPermanentMode = isImagebedPassword(password);
 
   const ext = extFromMime(file.type);
   const fileName = `${Date.now()}-${crypto.randomUUID()}.${ext}`;
