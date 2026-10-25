@@ -123,6 +123,7 @@ export default function Home({
     entries: historyEntries,
     add: addHistory,
     remove: removeHistory,
+    clearAll: clearHistory,
     enabled: historyEnabled,
     setEnabled: setHistoryEnabled,
   } = useGenerationHistory();
@@ -531,6 +532,8 @@ export default function Home({
           <KeepHistorySwitch
             enabled={historyEnabled}
             onToggle={setHistoryEnabled}
+            entryCount={historyEntries.length}
+            onClearAll={clearHistory}
           />
 
           <SubmitBar
@@ -582,6 +585,7 @@ export default function Home({
           <HistorySection
             entries={historyEntries}
             onRemove={removeHistory}
+            onClearAll={clearHistory}
             onEdit={handleEditHistory}
             editDisabled={loading || uploading}
           />

@@ -1,15 +1,51 @@
 "use client";
 
-import { Switch } from "antd";
+import { App, Switch } from "antd";
 
-/** 生图按钮上方的「在本地保留生成的图片」开关，决定出图结果要不要记进「最近生成」。 */
+/**
+ * 生图按钮上方的「在本地保留生成的图片」开关，决定出图结果要不要记进「最近生成」。
+ * 关闭时如果还有记录，弹窗问要不要顺便清空（连图床文件一起删），清空完成后弹窗才关闭。
+ */
 export function KeepHistorySwitch({
   enabled,
   onToggle,
+  entryCount,
+  onClearAll,
 }: {
   enabled: boolean;
   onToggle: (next: boolean) => void;
+  entryCount: number;
+  /** 返回删除失败的张数 */
+  onClearAll: () => Promise<number>;
 }) {
+  const { modal, message } = App.useApp();
+
+  function handleChange(next: boolean) {
+    if (next || entryCount === 0) {
+      onToggle(next);
+      return;
+    }
+    onToggle(false);
+    modal.confirm({
+      title: "要清空本地保存的所有图片吗？",
+      content: `已关闭「在本地保留生成的图片」。「最近生成」中还有 ${entryCount} 张图片，清空会同时删除图床中的这些图片，已分享的链接会失效，且无法恢复；不清空则保留现有记录，之后仍可手动删除。`,
+      okText: "清空",
+      okButtonProps: { danger: true },
+      cancelText: "不清空",
+      onOk: async () => {
+        // onOk 返回的 Promise 结束前按钮保持 loading，清空完成后弹窗才关闭
+        const failed = await onClearAll();
+        if (failed > 0) {
+          void message.warning(
+            `有 ${failed} 张删除失败，已保留在「最近生成」中`,
+          );
+        } else {
+          void message.success("已清空本地保存的图片");
+        }
+      },
+    });
+  }
+
   return (
     <label className="flex items-start justify-between gap-3 rounded-xl border border-sand-200 bg-sand-50/80 p-3 dark:border-sand-700 dark:bg-sand-900/40">
       <span className="flex flex-col gap-1">
@@ -25,7 +61,7 @@ export function KeepHistorySwitch({
       </span>
       <Switch
         checked={enabled}
-        onChange={onToggle}
+        onChange={handleChange}
         className="mt-0.5 shrink-0"
       />
     </label>

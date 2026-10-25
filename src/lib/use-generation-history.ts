@@ -160,5 +160,22 @@ export function useGenerationHistory() {
     write(current.filter((e) => e.id !== id));
   }, []);
 
-  return { entries, add, remove, enabled, setEnabled };
+  /**
+   * 一键清空：逐张删图床文件，成功一张移除一张本地记录，失败的留下方便重试。
+   * 返回删除失败的张数。
+   */
+  const clearAll = useCallback(async (): Promise<number> => {
+    let failed = 0;
+    for (const entry of parseEntries(getRawSnapshot())) {
+      const error = await deleteGeneratedImage(entry);
+      if (error) {
+        failed += 1;
+        continue;
+      }
+      write(parseEntries(getRawSnapshot()).filter((e) => e.id !== entry.id));
+    }
+    return failed;
+  }, []);
+
+  return { entries, add, remove, clearAll, enabled, setEnabled };
 }

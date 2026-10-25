@@ -27,11 +27,14 @@ function formatTime(ms: number): string {
 export function HistorySection({
   entries,
   onRemove,
+  onClearAll,
   onEdit,
   editDisabled,
 }: {
   entries: HistoryEntry[];
   onRemove: (id: string) => void;
+  /** 返回删除失败的张数 */
+  onClearAll: () => Promise<number>;
   onEdit: (entry: HistoryEntry) => void;
   editDisabled: boolean;
 }) {
@@ -50,13 +53,7 @@ export function HistorySection({
       cancelText: "取消",
       onOk: async () => {
         setClearing(true);
-        let failed = 0;
-        // 逐张删，成功一张移除一张，失败的留在列表里方便重试
-        for (const entry of entries) {
-          const error = await deleteGeneratedImage(entry);
-          if (error) failed += 1;
-          else onRemove(entry.id);
-        }
+        const failed = await onClearAll();
         setClearing(false);
         if (failed > 0) {
           void message.warning(`有 ${failed} 张删除失败，已保留在列表中`);
