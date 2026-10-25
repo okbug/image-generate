@@ -6,8 +6,8 @@ const STORAGE_KEY = "image-generator:history";
 /** 「保留记录」开关；没有值视为开启。 */
 const ENABLED_KEY = "image-generator:history-enabled";
 
-/** 最多保留的条数；超出时只丢掉最旧的本地记录，图床里的图不动。 */
-export const MAX_HISTORY = 50;
+/** 最多保留的条数；超出时自动删除最旧的图片（本地记录 + 图床文件）。 */
+export const MAX_HISTORY = 200;
 
 /** 「最近生成」里的一条记录，只存图床 URL 和元信息，不存图片本身。 */
 export type HistoryEntry = {
@@ -102,6 +102,27 @@ function write(entries: HistoryEntry[]) {
   writeKey(STORAGE_KEY, JSON.stringify(entries));
 }
 
+/** 删除图床里的一张出图结果，成功返回 null，失败返回错误文案。 */
+export async function deleteGeneratedImage(
+  entry: HistoryEntry,
+): Promise<string | null> {
+  try {
+    const res = await fetch("/api/generated", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        storeKey: entry.storeKey,
+        deleteToken: entry.deleteToken,
+      }),
+    });
+    if (res.ok) return null;
+    const json = (await res.json().catch(() => ({}))) as { error?: string };
+    return json.error ?? `删除失败 (${res.status})`;
+  } catch (err) {
+    return err instanceof Error ? err.message : "删除失败";
+  }
+}
+
 /** 最近生成的图片（新的在前），存在 localStorage。 */
 export function useGenerationHistory() {
   const raw = useSyncExternalStore(
@@ -122,8 +143,16 @@ export function useGenerationHistory() {
 
   const add = useCallback((next: HistoryEntry[]) => {
     if (next.length === 0) return;
-    const current = parseEntries(getRawSnapshot());
-    write([...next, ...current].slice(0, MAX_HISTORY));
+    const combined = [...next, ...parseEntries(getRawSnapshot())];
+    write(combined.slice(0, MAX_HISTORY));
+    // 超出上限的最旧记录：连图床文件一起删掉，免得记录没了、图却删不掉。
+    // 后台尽力而为，失败只打日志（凭证随记录一起丢了，之后也删不了）。
+    for (const entry of combined.slice(MAX_HISTORY)) {
+      void deleteGeneratedImage(entry).then((error) => {
+        if (error)
+          console.warn("[history] 自动删除旧图失败", entry.storeKey, error);
+      });
+    }
   }, []);
 
   const remove = useCallback((id: string) => {

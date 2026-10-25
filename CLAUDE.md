@@ -50,7 +50,7 @@ npm start        # 手动起 standalone —— 本机不要用，生产由 syste
   2. 本站临时目录（文件名 `<时间戳>-gen-<uuid>.<ext>`，30 分钟后清理）。
   3. 都失败则保留原 `b64_json`。
 - `DELETE /api/generated`（body `{ storeKey, deleteToken }`）删除图床里的出图结果：store_key 必须匹配 `PICBED_GEN_KEY_RE`（只认 `_gen-<uuid>`）且凭证校验通过，否则 403；图床 404 视为成功。
-- 首页底部「最近生成」（`HistorySection` + `lib/use-generation-history.ts`）：只记录存进图床的结果，localStorage `image-generator:history`，最多 50 条；`image-generator:history-enabled` 是「在本地保留」开关（缺省开启，`"0"` 为关闭）。删除 / 一键清空会同时删图床里的图。
+- 首页底部「最近生成」（`HistorySection` + `lib/use-generation-history.ts`）：只记录存进图床的结果，localStorage `image-generator:history`，最多 200 条（`MAX_HISTORY`），超出时 `add()` 会顺带调 `/api/generated` 删掉最旧图片的图床文件；列表每次显示 24 张、缩略图懒加载；开关组件 `KeepHistorySwitch` 在生图按钮上方；`image-generator:history-enabled` 是「在本地保留」开关（缺省开启，`"0"` 为关闭）。删除 / 一键清空会同时删图床里的图。
 - `UpdateNotice` 是更新说明弹窗：每次进首页都弹，「不再提醒」写入 `image-generator:update-notice-dismissed:<日期>`；下次有新的更新说明时换 key（同时改文案）。
 - 本机只有 2G 内存：`next dev` + 生产服务 + `tsc` 同时跑会触发 OOM（2026-10-25 dev 进程被杀过，生产未受影响），自测尽量 build 后直接在生产上验证，或用完立刻停掉 dev。
 

@@ -19,6 +19,7 @@ import {
 } from "@/components/workshop/constants";
 import { GenerationOptions } from "@/components/workshop/GenerationOptions";
 import { HistorySection } from "@/components/workshop/HistorySection";
+import { KeepHistorySwitch } from "@/components/workshop/KeepHistorySwitch";
 import { PageHeader } from "@/components/workshop/PageHeader";
 import { PromptInput } from "@/components/workshop/PromptInput";
 import { ReferenceImagesInput } from "@/components/workshop/ReferenceImagesInput";
@@ -527,6 +528,11 @@ export default function Home({
             loading={loading}
           />
 
+          <KeepHistorySwitch
+            enabled={historyEnabled}
+            onToggle={setHistoryEnabled}
+          />
+
           <SubmitBar
             mode={mode}
             loading={loading}
@@ -572,11 +578,9 @@ export default function Home({
         )}
 
         {/* 历史记录读 localStorage，服务端渲染时没有，等客户端再显示 */}
-        {isClient && (
+        {isClient && historyEntries.length > 0 && (
           <HistorySection
             entries={historyEntries}
-            enabled={historyEnabled}
-            onToggle={setHistoryEnabled}
             onRemove={removeHistory}
             onEdit={handleEditHistory}
             editDisabled={loading || uploading}
