@@ -136,6 +136,8 @@ export async function POST(req: Request) {
             { role: "user", content: original },
           ],
         }),
+        // 前端切换 tab 会中止请求，这里跟着取消上游调用，不白等
+        signal: req.signal,
       },
     );
   } catch (err) {

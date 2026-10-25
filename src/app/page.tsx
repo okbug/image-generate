@@ -79,6 +79,8 @@ export default function Home({
   const [customHeight, setCustomHeight] = useState(1024);
   const [loading, setLoading] = useState(false);
   const [optimizing, setOptimizing] = useState(false);
+  // 进行中的「优化提示词」请求；切换 tab 时中止，晚到的结果直接丢弃
+  const optimizeAbortRef = useRef<AbortController | null>(null);
   // 最近一次优化前后的两版文本，用来在「撤销优化 / 恢复优化」之间切换
   const [optimizeUndo, setOptimizeUndo] = useState<{
     before: string;
@@ -258,11 +260,14 @@ export default function Home({
       return;
     }
     if (!prompt.trim() || optimizing || loading) return;
+    const controller = new AbortController();
+    optimizeAbortRef.current = controller;
     setOptimizing(true);
     setError(null);
     try {
       const res = await fetch("/api/optimize-prompt", {
         method: "POST",
+        signal: controller.signal,
         headers: buildHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify({
           prompt,
@@ -271,6 +276,7 @@ export default function Home({
         }),
       });
       const json = (await res.json()) as { prompt?: string; error?: string };
+      if (controller.signal.aborted) return;
       if (!res.ok || !json.prompt) {
         setError(json.error ?? `优化失败 (${res.status})`);
         return;
@@ -280,10 +286,22 @@ export default function Home({
       }
       setPrompt(json.prompt);
     } catch (err) {
+      if (controller.signal.aborted) return;
       setError(err instanceof Error ? err.message : "未知错误");
     } finally {
-      setOptimizing(false);
+      // 被中止的请求由 cancelOptimize 收尾，这里只处理自己仍是当前请求的情况
+      if (optimizeAbortRef.current === controller) {
+        optimizeAbortRef.current = null;
+        setOptimizing(false);
+      }
     }
+  }
+
+  /** 中止进行中的「优化提示词」，结果不再回填。 */
+  function cancelOptimize() {
+    optimizeAbortRef.current?.abort();
+    optimizeAbortRef.current = null;
+    setOptimizing(false);
   }
 
   function handleToggleOptimize() {
@@ -437,6 +455,8 @@ export default function Home({
 
   function handleSwitchMode(next: Mode) {
     if (next === mode || loading || uploading) return;
+    // 优化是按当前模式的提示词发的，切走后结果不该回填到新模式
+    cancelOptimize();
     setMode(next);
     syncModeToUrl(next);
     setError(null);
