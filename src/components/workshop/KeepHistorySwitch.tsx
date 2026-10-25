@@ -1,10 +1,11 @@
 "use client";
 
-import { App, Switch } from "antd";
+import { App, Button, Switch } from "antd";
 
 /**
  * 生图按钮上方的「在本地保留生成的图片」开关，决定出图结果要不要记进「最近生成」。
- * 关闭时如果还有记录，弹窗问要不要顺便清空（连图床文件一起删），清空完成后弹窗才关闭。
+ * 关闭时如果还有记录，弹窗三选一：取消（开关保持开启）/ 不清空（只关开关）/
+ * 清空（关开关并连图床文件一起删，清空完成后弹窗才关闭）。
  */
 export function KeepHistorySwitch({
   enabled,
@@ -25,14 +26,29 @@ export function KeepHistorySwitch({
       onToggle(next);
       return;
     }
-    onToggle(false);
-    modal.confirm({
-      title: "要清空本地保存的所有图片吗？",
-      content: `已关闭「在本地保留生成的图片」。「最近生成」中还有 ${entryCount} 张图片，清空会同时删除图床中的这些图片，已分享的链接会失效，且无法恢复；不清空则保留现有记录，之后仍可手动删除。`,
+    // 开关先不动，等用户在弹窗里选了「不清空 / 清空」才真正关闭；取消、Esc、点遮罩都保持开启
+    const instance = modal.confirm({
+      title: "关闭后要清空本地保存的所有图片吗？",
+      content: `「最近生成」中还有 ${entryCount} 张图片。清空会同时删除图床中的这些图片，已分享的链接会失效，且无法恢复；不清空则保留现有记录，之后仍可手动删除；取消则不关闭开关。`,
       okText: "清空",
       okButtonProps: { danger: true },
-      cancelText: "不清空",
+      cancelText: "取消",
+      footer: (_, { OkBtn, CancelBtn }) => (
+        <>
+          <CancelBtn />
+          <Button
+            onClick={() => {
+              onToggle(false);
+              instance.destroy();
+            }}
+          >
+            不清空
+          </Button>
+          <OkBtn />
+        </>
+      ),
       onOk: async () => {
+        onToggle(false);
         // onOk 返回的 Promise 结束前按钮保持 loading，清空完成后弹窗才关闭
         const failed = await onClearAll();
         if (failed > 0) {
