@@ -3,7 +3,7 @@
 import { useState } from "react";
 
 import { App, Image } from "antd";
-import { Download, History, Pencil, Trash2 } from "lucide-react";
+import { Copy, Download, History, Pencil, Trash2 } from "lucide-react";
 
 import {
   type HistoryEntry,
@@ -62,6 +62,15 @@ export function HistorySection({
         }
       },
     });
+  }
+
+  async function handleCopyPrompt(entry: HistoryEntry) {
+    try {
+      await navigator.clipboard.writeText(entry.prompt);
+      void message.success("已复制提示词");
+    } catch {
+      void message.error("复制失败，请手动选择文字复制");
+    }
   }
 
   function handleDelete(entry: HistoryEntry) {
@@ -133,12 +142,21 @@ export function HistorySection({
                 >
                   {entry.prompt}
                 </p>
-                <div className="mt-auto flex items-center justify-between gap-1">
-                  <span className="truncate text-[11px] text-sand-500 dark:text-sand-500">
+                {/* 时间单独一行，按钮另起一行靠右，窄屏下四个按钮也不会把时间挤没 */}
+                <div className="mt-auto flex flex-col gap-1">
+                  <span className="text-[11px] text-sand-500 dark:text-sand-500">
                     {formatTime(entry.createdAt)} ·{" "}
                     {entry.mode === "edit" ? "编辑" : "生成"}
                   </span>
-                  <div className="flex shrink-0 items-center gap-0.5">
+                  <div className="-mr-1 flex items-center justify-end gap-0.5">
+                    <button
+                      type="button"
+                      onClick={() => void handleCopyPrompt(entry)}
+                      title="复制提示词"
+                      className="inline-flex h-7 w-7 items-center justify-center rounded-md text-sand-600 transition hover:bg-clay-50 hover:text-clay-700 dark:text-sand-400 dark:hover:bg-clay-500/10 dark:hover:text-clay-300"
+                    >
+                      <Copy className="h-3.5 w-3.5" />
+                    </button>
                     <button
                       type="button"
                       onClick={() => onEdit(entry)}
