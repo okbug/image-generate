@@ -83,6 +83,18 @@ function UnlockCard({
         <Lock className="h-4 w-4 text-clay-600 dark:text-clay-400" />
         请输入访问密码
       </div>
+      <p className="-mt-2 text-xs leading-relaxed text-sand-500 dark:text-sand-400">
+        密码为
+        <span className="font-medium text-sand-700 dark:text-sand-300">
+          今天的北京时间日期
+        </span>
+        ，格式 YYYYMMDD，共 8 位纯数字（月、日不足两位补 0）。例如 2026 年 1 月
+        5 日的密码是{" "}
+        <code className="rounded bg-sand-100 px-1 py-0.5 font-mono text-sand-700 dark:bg-sand-800 dark:text-sand-300">
+          20260105
+        </code>
+        。密码每天北京时间 0 点更新，每次进入本页都需要重新输入。
+      </p>
       <div className="flex flex-col gap-3 sm:flex-row">
         <input
           type="password"
@@ -91,7 +103,8 @@ function UnlockCard({
           autoFocus
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          placeholder="访问密码"
+          placeholder="8 位数字，如 20260105"
+          maxLength={8}
           className="h-12 w-full rounded-xl border border-sand-200 bg-white px-4 text-sm text-sand-900 outline-none transition placeholder:text-sand-400 focus:border-clay-400 focus:ring-4 focus:ring-clay-400/10 dark:border-sand-700 dark:bg-sand-900 dark:text-sand-100 sm:h-11"
         />
         <button
