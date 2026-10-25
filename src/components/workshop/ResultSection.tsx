@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 
+import { Clock } from "lucide-react";
+
 import { formatDuration } from "@/lib/use-timings";
 import {
   type ImageItem,
@@ -31,7 +33,15 @@ export function toRenderedItems(
       ];
     }
     if (item.url) {
-      return [{ src: item.url, revisedPrompt: item.revised_prompt, ext }];
+      // 本站落盘的临时图会带上 bytes；外部 URL 拿不到大小
+      return [
+        {
+          src: item.url,
+          revisedPrompt: item.revised_prompt,
+          ext,
+          bytes: item.bytes,
+        },
+      ];
     }
     return [];
   });
@@ -63,6 +73,11 @@ export function ResultSection({
   onEditResult: (item: RenderedItem, index: number) => void;
   editDisabled: boolean;
 }) {
+  // 出图结果落在本站临时目录，30 分钟后会随临时图一起清理
+  const hasTmpImage = renderedItems.some((item) =>
+    item.src.includes("/images/tmp/"),
+  );
+
   return (
     <section className="flex flex-col gap-5">
       <ResultMeta
@@ -88,6 +103,12 @@ export function ResultSection({
           />
         ))}
       </div>
+      {hasTmpImage && (
+        <p className="inline-flex items-center gap-1.5 text-xs text-sand-500 dark:text-sand-400">
+          <Clock className="h-3.5 w-3.5" />
+          图片链接 30 分钟内有效，之后会被自动清理，需要保留请及时下载。
+        </p>
+      )}
     </section>
   );
 }

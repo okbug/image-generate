@@ -2,7 +2,12 @@ import path from "node:path";
 
 export const UPLOAD_TMP_ROUTE = "/images/tmp";
 export const UPLOAD_PERMANENT_ROUTE = "/images/permanent";
-export const UPLOAD_NAME_RE = /^(\d{13})-[a-f0-9-]{36}\.(png|jpe?g|webp)$/i;
+/**
+ * 文件名 `<13 位毫秒时间戳>-[gen-]<uuid>.<ext>`：`gen-` 表示出图结果（见 generated-images.ts），
+ * 其余是用户上传。第 1 组是时间戳（清理按它判断过期），第 2 组是扩展名；同时用于防路径穿越。
+ */
+export const UPLOAD_NAME_RE =
+  /^(\d{13})-(?:gen-)?[a-f0-9-]{36}\.(png|jpe?g|webp)$/i;
 export const UPLOAD_EXPIRY_MS = 30 * 60 * 1000;
 
 /**

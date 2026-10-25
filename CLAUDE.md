@@ -45,6 +45,7 @@ npm start        # 手动起 standalone —— 本机不要用，生产由 syste
 - `/api/cleanup` 删除临时目录中 30 分钟以前的文件（按文件名里的时间戳判断）
 - 没填凭证时 `/api/generate`、`/api/edit`、`/api/optimize-prompt` 都返回 401。
 - 上游报错统一原样透传 `{ error, detail }`，前端靠 `isGenerateError()` 判别。
+- 出图成功后，`/api/generate` 和 `/api/edit` 都会经 `lib/generated-images.ts` 把每张 `b64_json` 落盘到临时目录（文件名带 `gen-`），响应里换成 `url` + `bytes`，30 分钟后随临时图清理；某张写盘失败则保留原 `b64_json`。
 
 **模型选择（`src/lib/models.ts`）**
 - 生图模型三档写死在 `IMAGE_MODEL_OPTIONS`：`gpt-image-2.5-sunburst`（默认，更精细）/ `gpt-image-2`（最稳）/ `gpt-image-2.5-flare`（更快），
@@ -61,7 +62,7 @@ npm start        # 手动起 standalone —— 本机不要用，生产由 syste
   两项都填了就算可用（`enabled` 字段只为兼容旧数据，已无开关）；没填时页面显示提示条，生成/编辑/优化按钮禁用，点击会打开设置弹窗。
 
 **上传存储（`src/lib/upload-store.ts`）**
-- 文件名格式固定为 `<13位毫秒时间戳>-<uuid>.<png|jpg|webp>`，`UPLOAD_NAME_RE` 同时用于防路径穿越和清理判定。
+- 文件名格式固定为 `<13位毫秒时间戳>-[gen-]<uuid>.<png|jpg|webp>`（`gen-` = 出图结果），`UPLOAD_NAME_RE` 同时用于防路径穿越和清理判定。
 - 目录由 `UPLOAD_TMP_DIR` / `UPLOAD_PERMANENT_DIR` 决定，缺省为 `process.cwd()/public/images/{tmp,permanent}`。
 - 图片通过 `/images/tmp/[name]` 和 `/images/permanent/[name]` 两个 route handler 读盘返回，而不是当 Next 静态资源——运行时新增的文件不在构建产物里，走静态资源会 404。
 - 所有 `fs`/`path` 调用都带 `/*turbopackIgnore: true*/` 注释，避免 Turbopack 把整个项目追踪进产物；新增文件系统操作要沿用。

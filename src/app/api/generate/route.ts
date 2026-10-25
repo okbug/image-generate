@@ -5,8 +5,12 @@ import {
   resolveCredentials,
 } from "@/lib/api-credentials";
 import { buildUpstreamHeaders } from "@/lib/client-info";
+import { storeGeneratedImages } from "@/lib/generated-images";
 import { resolveImageCount, resolveImageModel } from "@/lib/models";
-import type { GenerateRequestBody } from "@/types/images";
+import type {
+  GenerateRequestBody,
+  ImagesGenerationsResponse,
+} from "@/types/images";
 
 export const runtime = "nodejs";
 
@@ -72,12 +76,17 @@ export async function POST(req: Request) {
     );
   }
 
+  let result: ImagesGenerationsResponse;
   try {
-    return NextResponse.json(JSON.parse(text));
+    result = JSON.parse(text) as ImagesGenerationsResponse;
   } catch {
     return NextResponse.json(
       { error: "上游返回的不是合法 JSON", detail: text },
       { status: 502 },
     );
   }
+
+  // 图片落盘为临时文件，响应里只回 URL
+  const origin = req.headers.get("origin") ?? new URL(req.url).origin;
+  return NextResponse.json(await storeGeneratedImages(result, origin));
 }

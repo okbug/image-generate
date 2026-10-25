@@ -4,6 +4,8 @@ export type ImageItem = {
   b64_json?: string;
   url?: string;
   revised_prompt?: string;
+  /** 本站把 b64_json 落盘成临时图后补上的文件字节数（上游不返回）。 */
+  bytes?: number;
 };
 
 export type ImageUsageDetails = {
