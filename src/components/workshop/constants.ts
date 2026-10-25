@@ -73,9 +73,12 @@ export const IMAGE_SOURCE_OPTIONS: Array<{
 export type UploadedImage = {
   uid: string;
   url: string;
+  /** 本站临时目录里的文件名；external 时为空。 */
   fileName: string;
   previewSrc: string;
   name: string;
+  /** 直接引用的已有图片（如图床里的出图结果），没上传过，移除时不删服务端文件。 */
+  external?: boolean;
 };
 
 export function clampSide(n: number): number {

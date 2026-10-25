@@ -97,6 +97,7 @@ export default function Home({
     uploading,
     clearUploadedImages,
     uploadReferenceImage,
+    addReferenceUrl,
     removeUploadedImage,
     uploadProps,
   } = useReferenceImages({ loading, setError });
@@ -179,7 +180,7 @@ export default function Home({
     );
   }
 
-  /** 「最近生成」里点编辑：同「编辑该图片」，按 URL 取图当参考图。 */
+  /** 「最近生成」里点编辑：同「编辑该图片」，直接用图床 URL 当参考图。 */
   function handleEditHistory(entry: HistoryEntry) {
     const ext = entry.url.split(".").pop()?.toLowerCase() ?? "png";
     void handleEditResult({ src: entry.url, ext }, 0);
@@ -294,7 +295,7 @@ export default function Home({
 
   const parsedExternalUrls = parseExternalUrls(externalUrl);
 
-  /** 「编辑该图片」：把生成结果当参考图上传到本站，生成模式下顺带切到编辑模式。 */
+  /** 「编辑该图片」：把生成结果加为参考图（有公网 URL 就直接用，否则先上传），生成模式下顺带切到编辑模式。 */
   async function handleEditResult(item: RenderedItem, index: number) {
     if (loading || uploading) return;
     if (mode === Mode.Edit && uploadFileList.length >= MAX_UPLOAD_COUNT) {
@@ -302,6 +303,19 @@ export default function Home({
       return;
     }
 
+    // 已经是公网 URL（图床或本站临时图）：直接当参考图，不再下载再上传一遍
+    if (/^https?:\/\//i.test(item.src)) {
+      if (mode !== Mode.Edit) handleSwitchMode(Mode.Edit);
+      setImageSource(ImageSource.Upload);
+      const name =
+        decodeURIComponent(item.src.split("/").pop() ?? "") ||
+        `result-${index + 1}.${item.ext}`;
+      addReferenceUrl(item.src, name);
+      formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
+
+    // 回落成 base64 的结果没有公网地址，只能先上传到本站临时目录
     const id = crypto.randomUUID();
     let file: File;
     try {

@@ -73,21 +73,23 @@ export function useReferenceImages({
     void message.error(text);
   }
 
-  function releaseUploadedImage(image: UploadedImage) {
-    URL.revokeObjectURL(image.previewSrc);
-    void deleteRemoteFile(image.fileName);
-  }
+  /** 释放一张参考图：本地 blob 预览要回收，上传过的临时文件要删；直接引用的 URL 什么都不用做。 */
+  const releaseUploadedImage = useCallback(
+    (image: UploadedImage) => {
+      if (image.external) return;
+      URL.revokeObjectURL(image.previewSrc);
+      void deleteRemoteFile(image.fileName);
+    },
+    [deleteRemoteFile],
+  );
 
   const clearUploadedImages = useCallback(() => {
     setUploadedImages((current) => {
-      current.forEach((image) => {
-        URL.revokeObjectURL(image.previewSrc);
-        void deleteRemoteFile(image.fileName);
-      });
+      current.forEach(releaseUploadedImage);
       return [];
     });
     setUploadFileList([]);
-  }, [deleteRemoteFile]);
+  }, [releaseUploadedImage]);
 
   useEffect(() => {
     uploadedImagesRef.current = uploadedImages;
@@ -95,13 +97,31 @@ export function useReferenceImages({
 
   useEffect(
     () => () => {
-      uploadedImagesRef.current.forEach((image) => {
-        URL.revokeObjectURL(image.previewSrc);
-        void deleteRemoteFile(image.fileName);
-      });
+      uploadedImagesRef.current.forEach(releaseUploadedImage);
     },
-    [deleteRemoteFile],
+    [releaseUploadedImage],
   );
+
+  /**
+   * 直接把一张已有公网 URL 的图片（图床里的出图结果等）加为参考图，不下载也不重新上传。
+   * 超过上限返回 false。
+   */
+  function addReferenceUrl(url: string, name: string): boolean {
+    if (uploadFileList.length >= MAX_UPLOAD_COUNT) {
+      reportUploadError(`最多只能上传 ${MAX_UPLOAD_COUNT} 张参考图片`);
+      return false;
+    }
+    const uid = `url-${crypto.randomUUID()}`;
+    setUploadedImages((current) => [
+      ...current,
+      { uid, url, fileName: "", previewSrc: url, name, external: true },
+    ]);
+    setUploadFileList((current) => [
+      ...current,
+      { uid, name, status: "done", percent: 100, url, thumbUrl: url },
+    ]);
+    return true;
+  }
 
   async function uploadReferenceImage(
     file: File,
@@ -230,6 +250,7 @@ export function useReferenceImages({
     uploading,
     clearUploadedImages,
     uploadReferenceImage,
+    addReferenceUrl,
     removeUploadedImage,
     uploadProps,
   };
