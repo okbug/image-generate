@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-import { Clock } from "lucide-react";
+import { CloudCheck, Clock } from "lucide-react";
 
 import { formatDuration } from "@/lib/use-timings";
 import {
@@ -40,6 +40,9 @@ export function toRenderedItems(
           revisedPrompt: item.revised_prompt,
           ext,
           bytes: item.bytes,
+          downloadHref: item.storeKey ? `${item.url}?dl=1` : undefined,
+          storeKey: item.storeKey,
+          deleteToken: item.deleteToken,
         },
       ];
     }
@@ -66,14 +69,17 @@ export function ResultSection({
   lastDurationMs,
   onEditResult,
   editDisabled,
+  historyEnabled,
 }: {
   result: ImagesGenerationsResponse;
   renderedItems: RenderedItem[];
   lastDurationMs: number | null;
   onEditResult: (item: RenderedItem, index: number) => void;
   editDisabled: boolean;
+  historyEnabled: boolean;
 }) {
-  // 出图结果落在本站临时目录，30 分钟后会随临时图一起清理
+  // 存进图床的会进「最近生成」；图床失败回落到本站临时目录的，30 分钟后会被清理
+  const hasPicbedImage = renderedItems.some((item) => item.storeKey);
   const hasTmpImage = renderedItems.some((item) =>
     item.src.includes("/images/tmp/"),
   );
@@ -103,6 +109,14 @@ export function ResultSection({
           />
         ))}
       </div>
+      {hasPicbedImage && (
+        <p className="inline-flex items-center gap-1.5 text-xs text-sand-500 dark:text-sand-400">
+          <CloudCheck className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+          {historyEnabled
+            ? "已自动保存到图床，可在页面底部「最近生成」中随时找回。"
+            : "已保存到图床；你关闭了「在本地保留」，刷新后将无法在本页找回，请及时下载。"}
+        </p>
+      )}
       {hasTmpImage && (
         <p className="inline-flex items-center gap-1.5 text-xs text-sand-500 dark:text-sand-400">
           <Clock className="h-3.5 w-3.5" />
@@ -220,7 +234,7 @@ function ResultCard({
               ✏️ 编辑该图片
             </button>
             <a
-              href={item.src}
+              href={item.downloadHref ?? item.src}
               download={fileName}
               className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-sand-900 px-3.5 text-xs font-medium text-white transition active:scale-95 hover:bg-sand-700 dark:bg-white dark:text-sand-900 dark:hover:bg-sand-200"
             >

@@ -4,8 +4,12 @@ export type ImageItem = {
   b64_json?: string;
   url?: string;
   revised_prompt?: string;
-  /** 本站把 b64_json 落盘成临时图后补上的文件字节数（上游不返回）。 */
+  /** 本站把 b64_json 存成图片后补上的文件字节数（上游不返回）。 */
   bytes?: number;
+  /** 存到 PicBed 图床时的 store_key，删除时用。 */
+  storeKey?: string;
+  /** 本站签发的删除凭证，和 storeKey 一起交给 /api/generated 才能删除。 */
+  deleteToken?: string;
 };
 
 export type ImageUsageDetails = {

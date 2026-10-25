@@ -10,6 +10,7 @@
 - **参考图重绘**：上传最多 10 张参考图（单张 ≤ 20MB，支持拖拽、粘贴），或直接填写图片 URL，描述想要的修改。地址栏带 `?mode=edit` 可直接进入编辑模式。
 - **提示词优化**：调用对话模型润色提示词，可在「撤销优化 / 恢复优化」之间切换。
 - **结果处理**：显示耗时、tokens 和图片大小；可下载，也可以把结果直接作为参考图继续修改。
+- **最近生成**：生成的图片保存到图床，首页底部列出最近 50 张，可预览、下载、继续编辑、删除或一键清空；记录只存在本浏览器，可用开关关闭。
 - **出图耗时统计**：按模型记录最近的出图耗时，方便比较。
 - **图床**：`/imagebed` 输入密码后可上传图片并获得永久链接；`/imagebed/tmp` 可查看临时目录里的图片。
 - **一键演示配置**：`/demo` 输入访问密码（北京时间当天日期 `YYYYMMDD`）后，可一键把演示用的 BaseURL + Key 填入浏览器。
@@ -19,8 +20,8 @@
 
 - 生图、改图、优化提示词都**必须**使用用户自己填写的 BaseURL + API Key。凭证只保存在浏览器的 localStorage 中，每次请求通过请求头 `x-image-api-base-url` / `x-image-api-key` 转发给上游，服务端不持久化。
 - 编辑模式上传的参考图会暂存在服务器的临时目录中，并生成一个公网 URL 交给上游拉取。
-- 生成的图片同样会保存为临时文件（文件名带 `gen-` 标识），接口只返回图片 URL，不再返回 base64。
-- 临时文件约 30 分钟后，在有人访问页面时被清理，需要保留的图片请及时下载。
+- 生成的图片会上传到 PicBed 图床（配置了 `PICBED_*` 时），接口只返回图片 URL，不再返回 base64；没配置或上传失败时，回落为本站临时文件（文件名带 `gen-` 标识，约 30 分钟后清理）。
+- 首页底部「最近生成」的记录只保存在浏览器的 localStorage 中，可以通过开关关闭；删除或一键清空会同时删除图床中的图片。
 
 ## 快速开始
 
@@ -50,6 +51,7 @@ pnpm format         # Prettier 格式化
 | --- | --- |
 | `IMAGEBED_PASSWORD` | 图床密码，用于 `/imagebed` 解锁、永久存图以及 `/imagebed/tmp` 列表。只在服务端比对，不填则图床无法解锁。 |
 | `DEMO_API_BASE_URL` / `DEMO_API_KEY` | `/demo` 一键填入的演示凭证，访问密码校验通过后才会下发。不填则 `/demo` 提示「未就绪」。 |
+| `PICBED_BASE_URL` / `PICBED_TOKEN` | 出图结果上传的 PicBed 图床地址与 Token（只在服务端使用）。不填则出图结果存为本站 30 分钟临时图，「最近生成」不记录。 |
 | `UPLOAD_TMP_DIR` | 临时图片目录，默认 `<cwd>/public/images/tmp`。 |
 | `UPLOAD_PERMANENT_DIR` | 图床永久图片目录，默认 `<cwd>/public/images/permanent`。 |
 
@@ -72,6 +74,7 @@ pnpm format         # Prettier 格式化
 | `POST /api/edit` | 转发到 `{baseUrl}/v1/images/edits`，参考图以 URL 形式传给上游 |
 | `POST /api/optimize-prompt` | 转发到 `{baseUrl}/v1/chat/completions` |
 | `POST/DELETE /api/upload` | 上传 / 删除图片（带正确的图床密码时存为永久图） |
+| `DELETE /api/generated` | 删除图床中的出图结果（需要出图时签发的删除凭证） |
 | `POST /api/cleanup` | 清理 30 分钟前的临时图片 |
 | `GET /images/tmp/[name]`、`/images/permanent/[name]` | 读取已上传的图片 |
 

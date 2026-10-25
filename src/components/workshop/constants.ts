@@ -40,6 +40,11 @@ export type RenderedItem = {
   ext: string;
   /** 图片文件字节数；上游只给 URL 时拿不到，为 undefined。 */
   bytes?: number;
+  /** 下载链接；跨域的图床图片 download 属性无效，要用图床的 ?dl=1。缺省用 src。 */
+  downloadHref?: string;
+  /** 存在 PicBed 图床里的图（会进「最近生成」）。 */
+  storeKey?: string;
+  deleteToken?: string;
 };
 
 export enum Mode {

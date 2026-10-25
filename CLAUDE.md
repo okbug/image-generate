@@ -45,7 +45,14 @@ npm start        # 手动起 standalone —— 本机不要用，生产由 syste
 - `/api/cleanup` 删除临时目录中 30 分钟以前的文件（按文件名里的时间戳判断）
 - 没填凭证时 `/api/generate`、`/api/edit`、`/api/optimize-prompt` 都返回 401。
 - 上游报错统一原样透传 `{ error, detail }`，前端靠 `isGenerateError()` 判别。
-- 出图成功后，`/api/generate` 和 `/api/edit` 都会经 `lib/generated-images.ts` 把每张 `b64_json` 落盘到临时目录（文件名带 `gen-`），响应里换成 `url` + `bytes`，30 分钟后随临时图清理；某张写盘失败则保留原 `b64_json`。
+- 出图成功后，`/api/generate` 和 `/api/edit` 都会经 `lib/generated-images.ts` 存图，响应里用 `url` + `bytes` 替换 `b64_json`。每张按顺序尝试：
+  1. PicBed 图床（`lib/picbed.ts`，`.env.local` 的 `PICBED_BASE_URL` / `PICBED_TOKEN`，文档 `{PICBED_BASE_URL}/api/doc`）：上传文件名 `gen-<uuid>.<ext>`，store_key 形如 `20261025-164314_gen-<uuid>.png`；额外返回 `storeKey` + `deleteToken`（用 Token 做 HMAC 签名）。
+  2. 本站临时目录（文件名 `<时间戳>-gen-<uuid>.<ext>`，30 分钟后清理）。
+  3. 都失败则保留原 `b64_json`。
+- `DELETE /api/generated`（body `{ storeKey, deleteToken }`）删除图床里的出图结果：store_key 必须匹配 `PICBED_GEN_KEY_RE`（只认 `_gen-<uuid>`）且凭证校验通过，否则 403；图床 404 视为成功。
+- 首页底部「最近生成」（`HistorySection` + `lib/use-generation-history.ts`）：只记录存进图床的结果，localStorage `image-generator:history`，最多 50 条；`image-generator:history-enabled` 是「在本地保留」开关（缺省开启，`"0"` 为关闭）。删除 / 一键清空会同时删图床里的图。
+- `UpdateNotice` 是更新说明弹窗：每次进首页都弹，「不再提醒」写入 `image-generator:update-notice-dismissed:<日期>`；下次有新的更新说明时换 key（同时改文案）。
+- 本机只有 2G 内存：`next dev` + 生产服务 + `tsc` 同时跑会触发 OOM（2026-10-25 dev 进程被杀过，生产未受影响），自测尽量 build 后直接在生产上验证，或用完立刻停掉 dev。
 
 **模型选择（`src/lib/models.ts`）**
 - 生图模型三档写死在 `IMAGE_MODEL_OPTIONS`：`gpt-image-2.5-sunburst`（默认，更精细）/ `gpt-image-2`（最稳）/ `gpt-image-2.5-flare`（更快），

@@ -18,6 +18,7 @@ import {
   validateExternalUrls,
 } from "@/components/workshop/constants";
 import { GenerationOptions } from "@/components/workshop/GenerationOptions";
+import { HistorySection } from "@/components/workshop/HistorySection";
 import { PageHeader } from "@/components/workshop/PageHeader";
 import { PromptInput } from "@/components/workshop/PromptInput";
 import { ReferenceImagesInput } from "@/components/workshop/ReferenceImagesInput";
@@ -27,9 +28,14 @@ import {
 } from "@/components/workshop/ResultSection";
 import { SubmitBar } from "@/components/workshop/SubmitBar";
 import { TimingPanel } from "@/components/workshop/TimingPanel";
+import { UpdateNotice } from "@/components/workshop/UpdateNotice";
 import { useReferenceImages } from "@/components/workshop/use-reference-images";
 import { DEFAULT_IMAGE_MODEL } from "@/lib/models";
 import { useCustomApi } from "@/lib/use-custom-api";
+import {
+  type HistoryEntry,
+  useGenerationHistory,
+} from "@/lib/use-generation-history";
 import { useTimings } from "@/lib/use-timings";
 import {
   type GenerateApiResult,
@@ -112,6 +118,13 @@ export default function Home({
     clear: clearTimings,
     averages: timingAverages,
   } = useTimings();
+  const {
+    entries: historyEntries,
+    add: addHistory,
+    remove: removeHistory,
+    enabled: historyEnabled,
+    setEnabled: setHistoryEnabled,
+  } = useGenerationHistory();
   const [apiModalOpen, setApiModalOpen] = useState(false);
   // 凭证存在 localStorage，服务端渲染时读不到；等到客户端再判断，避免已填用户每次刷新都闪一下提示条
   const isClient = useSyncExternalStore(
@@ -134,6 +147,41 @@ export default function Home({
     }, 100);
     return () => window.clearInterval(timer);
   }, [startedAt]);
+
+  /**
+   * 存进图床的结果记到「最近生成」（本站临时图 30 分钟就没了，不记）。
+   * 用户关了「在本地保留」开关就不记。
+   */
+  function recordHistory(
+    data: ImagesGenerationsResponse["data"],
+    meta: Pick<HistoryEntry, "prompt" | "model" | "size" | "mode">,
+  ) {
+    if (!historyEnabled) return;
+    const createdAt = Date.now();
+    addHistory(
+      data.flatMap((item): HistoryEntry[] =>
+        item.url && item.storeKey && item.deleteToken
+          ? [
+              {
+                id: item.storeKey,
+                url: item.url,
+                storeKey: item.storeKey,
+                deleteToken: item.deleteToken,
+                bytes: item.bytes,
+                createdAt,
+                ...meta,
+              },
+            ]
+          : [],
+      ),
+    );
+  }
+
+  /** 「最近生成」里点编辑：同「编辑该图片」，按 URL 取图当参考图。 */
+  function handleEditHistory(entry: HistoryEntry) {
+    const ext = entry.url.split(".").pop()?.toLowerCase() ?? "png";
+    void handleEditResult({ src: entry.url, ext }, 0);
+  }
 
   function resolveSize(): string {
     if (size !== "custom") return size;
@@ -182,6 +230,12 @@ export default function Home({
       }
 
       setResult(json);
+      recordHistory(json.data, {
+        prompt,
+        model,
+        size: usedSize,
+        mode: "generate",
+      });
       ok = true;
     } catch (err) {
       setError(err instanceof Error ? err.message : "未知错误");
@@ -336,6 +390,12 @@ export default function Home({
         return;
       }
       setResult(json);
+      recordHistory(json.data, {
+        prompt,
+        model,
+        size: usedSize,
+        mode: "edit",
+      });
       ok = true;
     } catch (err) {
       setError(err instanceof Error ? err.message : "未知错误");
@@ -403,6 +463,7 @@ export default function Home({
 
   return (
     <div className="app-aurora min-h-screen px-4 py-6 md:px-8 md:py-14">
+      <UpdateNotice />
       <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 md:gap-10">
         <PageHeader
           mode={mode}
@@ -488,6 +549,7 @@ export default function Home({
             renderedItems={renderedItems}
             lastDurationMs={lastDurationMs}
             onEditResult={(item, idx) => void handleEditResult(item, idx)}
+            historyEnabled={historyEnabled}
             editDisabled={loading || uploading}
           />
         )}
@@ -507,6 +569,18 @@ export default function Home({
               还没有作品。先写一段 prompt，点击「生成图片」开始吧。
             </p>
           </div>
+        )}
+
+        {/* 历史记录读 localStorage，服务端渲染时没有，等客户端再显示 */}
+        {isClient && (
+          <HistorySection
+            entries={historyEntries}
+            enabled={historyEnabled}
+            onToggle={setHistoryEnabled}
+            onRemove={removeHistory}
+            onEdit={handleEditHistory}
+            editDisabled={loading || uploading}
+          />
         )}
       </div>
 
