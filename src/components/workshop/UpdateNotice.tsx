@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useSyncExternalStore } from "react";
+import { useRef, useState, useSyncExternalStore } from "react";
 
 import { Modal } from "antd";
 import {
@@ -85,6 +85,7 @@ export function UpdateNotice() {
     getServerDismissed,
   );
   const [closed, setClosed] = useState(false);
+  const okRef = useRef<HTMLButtonElement>(null);
 
   function handleNeverShow() {
     try {
@@ -100,6 +101,10 @@ export function UpdateNotice() {
       open={!dismissed && !closed}
       title="更新记录"
       onCancel={() => setClosed(true)}
+      // antd 默认把焦点给右上角的 X；改成聚焦「我知道了」，回车即确认
+      afterOpenChange={(open) => {
+        if (open) okRef.current?.focus();
+      }}
       footer={[
         <button
           key="never"
@@ -111,9 +116,10 @@ export function UpdateNotice() {
         </button>,
         <button
           key="ok"
+          ref={okRef}
           type="button"
           onClick={() => setClosed(true)}
-          className="inline-flex h-9 items-center rounded-lg bg-clay-600 px-4 text-sm font-semibold text-white transition hover:bg-clay-700 dark:bg-clay-500 dark:hover:bg-clay-400"
+          className="inline-flex h-9 items-center rounded-lg bg-clay-600 px-4 text-sm font-semibold text-white outline-none transition hover:bg-clay-700 dark:bg-clay-500 dark:hover:bg-clay-400"
         >
           我知道了
         </button>,
