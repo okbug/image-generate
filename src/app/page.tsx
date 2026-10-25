@@ -129,6 +129,7 @@ export default function Home({
     clearAll: clearHistory,
     enabled: historyEnabled,
     setEnabled: setHistoryEnabled,
+    deletedKeys: deletedHistoryKeys,
   } = useGenerationHistory();
   const [apiModalOpen, setApiModalOpen] = useState(false);
   // 凭证存在 localStorage，服务端渲染时读不到；等到客户端再判断，避免已填用户每次刷新都闪一下提示条
@@ -593,6 +594,7 @@ export default function Home({
             lastDurationMs={lastDurationMs}
             onEditResult={(item, idx) => void handleEditResult(item, idx)}
             historyEnabled={historyEnabled}
+            deletedKeys={deletedHistoryKeys}
             editDisabled={loading || uploading}
           />
         )}

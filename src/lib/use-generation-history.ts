@@ -64,6 +64,18 @@ function getEnabledServerSnapshot(): boolean {
   return true;
 }
 
+/**
+ * 本页会话里已经从图床删掉的 storeKey（只在内存里）。结果区据此禁用「编辑该图片」等，
+ * 免得点了去拉一张 404 的图。每次变更换一个新 Set，useSyncExternalStore 才能感知。
+ */
+let deletedKeys: ReadonlySet<string> = new Set();
+const EMPTY_KEYS: ReadonlySet<string> = new Set();
+
+function markDeleted(storeKey: string) {
+  deletedKeys = new Set([...deletedKeys, storeKey]);
+  notify();
+}
+
 function getServerSnapshot(): string | null {
   return null;
 }
@@ -115,7 +127,10 @@ export async function deleteGeneratedImage(
         deleteToken: entry.deleteToken,
       }),
     });
-    if (res.ok) return null;
+    if (res.ok) {
+      markDeleted(entry.storeKey);
+      return null;
+    }
     const json = (await res.json().catch(() => ({}))) as { error?: string };
     return json.error ?? `删除失败 (${res.status})`;
   } catch (err) {
@@ -135,6 +150,12 @@ export function useGenerationHistory() {
     subscribe,
     getEnabledSnapshot,
     getEnabledServerSnapshot,
+  );
+
+  const deleted = useSyncExternalStore(
+    subscribe,
+    () => deletedKeys,
+    () => EMPTY_KEYS,
   );
 
   const setEnabled = useCallback((next: boolean) => {
@@ -177,5 +198,13 @@ export function useGenerationHistory() {
     return failed;
   }, []);
 
-  return { entries, add, remove, clearAll, enabled, setEnabled };
+  return {
+    entries,
+    add,
+    remove,
+    clearAll,
+    enabled,
+    setEnabled,
+    deletedKeys: deleted,
+  };
 }

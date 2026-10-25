@@ -51,8 +51,9 @@ npm start        # 手动起 standalone —— 本机不要用，生产由 syste
   3. 都失败则保留原 `b64_json`。
 - `DELETE /api/generated`（body `{ storeKey, deleteToken }`）删除图床里的出图结果：store_key 必须匹配 `PICBED_GEN_KEY_RE`（只认 `_gen-<uuid>`）且凭证校验通过，否则 403；图床 404 视为成功。
 - 首页底部「最近生成」（`HistorySection` + `lib/use-generation-history.ts`）：只记录存进图床的结果，localStorage `image-generator:history`，最多 200 条（`MAX_HISTORY`），超出时 `add()` 会顺带调 `/api/generated` 删掉最旧图片的图床文件；列表每次显示 24 张、缩略图懒加载；开关组件 `KeepHistorySwitch` 在生图按钮上方；`image-generator:history-enabled` 是「在本地保留」开关（缺省开启，`"0"` 为关闭）。删除 / 一键清空会同时删图床里的图。
-- `UpdateNotice` 是更新说明弹窗：每次进首页都弹，「不再提醒」写入 `image-generator:update-notice-dismissed:<日期>`；下次有新的更新说明时换 key（同时改文案）。
+- `UpdateNotice` 是更新记录弹窗：内容在 `RELEASES` 数组里按日期分组、最新在前。**有新更新时在数组开头追加一条（新日期 + 内容），不要改旧记录**。每次进首页都弹，「不再提醒」写入 `image-generator:update-notice-dismissed:<最新日期>`，key 跟着最新日期变，所以追加后所有人会重新看到一次。
 - 本机只有 2G 内存：`next dev` + 生产服务 + `tsc` 同时跑会触发 OOM（2026-10-25 dev 进程被杀过，生产未受影响），自测尽量 build 后直接在生产上验证，或用完立刻停掉 dev。
+- **build 被 OOM 杀掉会弄坏线上**：`next build` 一开始就清空 `.next/`，被杀后 `.next/standalone` 不完整，正在跑的生产进程按需读文件会 500（2026-10-25 12:36 起约 4 分钟 `/imagebed` 500，重新 build + restart 恢复）。build 前先 `free -m` 看可用内存（低于约 700MB 先别 build），被杀了立刻重新 build 再 restart。
 
 **模型选择（`src/lib/models.ts`）**
 - 生图模型三档写死在 `IMAGE_MODEL_OPTIONS`：`gpt-image-2.5-sunburst`（默认，更精细）/ `gpt-image-2`（最稳）/ `gpt-image-2.5-flare`（更快），

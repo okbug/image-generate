@@ -70,6 +70,7 @@ export function ResultSection({
   onEditResult,
   editDisabled,
   historyEnabled,
+  deletedKeys,
 }: {
   result: ImagesGenerationsResponse;
   renderedItems: RenderedItem[];
@@ -77,9 +78,13 @@ export function ResultSection({
   onEditResult: (item: RenderedItem, index: number) => void;
   editDisabled: boolean;
   historyEnabled: boolean;
+  /** 本页已从图床删掉的 storeKey，对应的结果不能再编辑 / 下载 */
+  deletedKeys: ReadonlySet<string>;
 }) {
   // 存进图床的会进「最近生成」；图床失败回落到本站临时目录的，30 分钟后会被清理
-  const hasPicbedImage = renderedItems.some((item) => item.storeKey);
+  const hasPicbedImage = renderedItems.some(
+    (item) => item.storeKey && !deletedKeys.has(item.storeKey),
+  );
   const hasTmpImage = renderedItems.some((item) =>
     item.src.includes("/images/tmp/"),
   );
@@ -106,6 +111,7 @@ export function ResultSection({
             createdAt={result.created}
             onEdit={() => onEditResult(item, idx)}
             editDisabled={editDisabled}
+            deleted={Boolean(item.storeKey && deletedKeys.has(item.storeKey))}
           />
         ))}
       </div>
@@ -195,24 +201,36 @@ function ResultCard({
   createdAt,
   onEdit,
   editDisabled,
+  deleted,
 }: {
   item: RenderedItem;
   index: number;
   createdAt: number;
   onEdit: () => void;
   editDisabled: boolean;
+  /** 已从图床删除：链接已失效，编辑 / 下载都会 404 */
+  deleted: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
   const fileName = `image-${createdAt}-${index + 1}.${item.ext}`;
 
   return (
     <figure className="glass overflow-hidden rounded-2xl sm:rounded-3xl">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={item.src}
-        alt={`生成结果 ${index + 1}`}
-        className="block h-auto w-full"
-      />
+      <div className="relative">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={item.src}
+          alt={`生成结果 ${index + 1}`}
+          className={`block h-auto w-full ${deleted ? "opacity-30 grayscale" : ""}`}
+        />
+        {deleted && (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <span className="rounded-full bg-sand-900/80 px-4 py-2 text-xs font-medium text-white">
+              已从图床删除，链接已失效
+            </span>
+          </div>
+        )}
+      </div>
       <figcaption className="flex flex-col gap-3 p-4 sm:px-5 sm:py-4">
         <div className="flex items-center justify-between text-xs">
           <span className="font-medium text-sand-700 dark:text-sand-300">
@@ -227,19 +245,32 @@ function ResultCard({
             <button
               type="button"
               onClick={onEdit}
-              disabled={editDisabled}
-              title="把这张图作为参考图，继续修改"
+              disabled={editDisabled || deleted}
+              title={
+                deleted
+                  ? "图片已从图床删除，无法继续编辑"
+                  : "把这张图作为参考图，继续修改"
+              }
               className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-clay-200 bg-clay-50/70 px-3.5 text-xs font-medium text-clay-700 transition active:scale-95 hover:border-clay-300 hover:bg-clay-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-clay-500/40 dark:bg-clay-500/10 dark:text-clay-300 dark:hover:border-clay-400/60 dark:hover:bg-clay-500/20"
             >
               ✏️ 编辑该图片
             </button>
-            <a
-              href={item.downloadHref ?? item.src}
-              download={fileName}
-              className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-sand-900 px-3.5 text-xs font-medium text-white transition active:scale-95 hover:bg-sand-700 dark:bg-white dark:text-sand-900 dark:hover:bg-sand-200"
-            >
-              ↓ 下载
-            </a>
+            {deleted ? (
+              <span
+                title="图片已从图床删除，无法下载"
+                className="inline-flex h-9 cursor-not-allowed items-center gap-1.5 rounded-lg bg-sand-900 px-3.5 text-xs font-medium text-white opacity-50 dark:bg-white dark:text-sand-900"
+              >
+                ↓ 下载
+              </span>
+            ) : (
+              <a
+                href={item.downloadHref ?? item.src}
+                download={fileName}
+                className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-sand-900 px-3.5 text-xs font-medium text-white transition active:scale-95 hover:bg-sand-700 dark:bg-white dark:text-sand-900 dark:hover:bg-sand-200"
+              >
+                ↓ 下载
+              </a>
+            )}
           </div>
         </div>
 
