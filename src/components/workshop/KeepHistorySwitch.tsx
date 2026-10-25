@@ -63,9 +63,13 @@ export function KeepHistorySwitch({
   }
 
   return (
-    <label className="flex items-start justify-between gap-3 rounded-xl border border-sand-200 bg-sand-50/80 p-3 dark:border-sand-700 dark:bg-sand-900/40">
+    // 用 div 而不是 label：label 会把点击文字转发给开关，误触就切换了
+    <div className="flex items-start justify-between gap-3 rounded-xl border border-sand-200 bg-sand-50/80 p-3 dark:border-sand-700 dark:bg-sand-900/40">
       <span className="flex flex-col gap-1">
-        <span className="text-sm font-medium text-sand-800 dark:text-sand-200">
+        <span
+          id="keep-history-label"
+          className="text-sm font-medium text-sand-800 dark:text-sand-200"
+        >
           在本地保留生成的图片
         </span>
         <span className="text-xs leading-relaxed text-sand-500 dark:text-sand-400">
@@ -76,10 +80,11 @@ export function KeepHistorySwitch({
         </span>
       </span>
       <Switch
+        aria-labelledby="keep-history-label"
         checked={enabled}
         onChange={handleChange}
         className="mt-0.5 shrink-0"
       />
-    </label>
+    </div>
   );
 }
