@@ -28,7 +28,9 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  maximumScale: 5,
+  // 禁止移动端缩放；iOS Safari 会忽略 user-scalable，另见下方内联脚本和 globals.css 的 touch-action
+  maximumScale: 1,
+  userScalable: false,
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "#faf9f5" },
     { media: "(prefers-color-scheme: dark)", color: "#262624" },
@@ -51,7 +53,9 @@ export default function RootLayout({
         <script
           dangerouslySetInnerHTML={{
             __html:
-              "try{if(window.matchMedia('(prefers-color-scheme: dark)').matches){document.documentElement.classList.add('dark');}}catch(_){}",
+              "try{if(window.matchMedia('(prefers-color-scheme: dark)').matches){document.documentElement.classList.add('dark');}}catch(_){}" +
+              // iOS Safari 不认 user-scalable=no，拦掉双指缩放手势
+              "document.addEventListener('gesturestart',function(e){e.preventDefault();},{passive:false});",
           }}
         />
       </head>
