@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { App, Image } from "antd";
 import { Copy, Download, History, Pencil, Trash2 } from "lucide-react";
@@ -11,8 +11,40 @@ import {
   deleteGeneratedImage,
 } from "@/lib/use-generation-history";
 
-/** 一次先显示多少张，其余点「显示更多」再展开（缩略图加载的是原图，一次铺 200 张太重）。 */
-const PAGE_SIZE = 24;
+/** 默认只显示几排，点「显示更多」每次再展开这么多排（缩略图加载的是原图，一次铺太多很费流量）。 */
+const ROWS_PER_PAGE = 3;
+
+/** 和网格的 grid-cols-2 / sm:grid-cols-3 / lg:grid-cols-4 保持一致 */
+function getColumnCount(): number {
+  if (window.matchMedia("(min-width: 1024px)").matches) return 4;
+  if (window.matchMedia("(min-width: 640px)").matches) return 3;
+  return 2;
+}
+
+/**
+ * 区块滚到视口附近才开始渲染图片。原生 loading="lazy" 的提前量很大（上千像素），
+ * 首页不长，基本等于一进来就加载，所以自己用 IntersectionObserver 卡一道。
+ */
+function useInView<T extends Element>(rootMargin: string) {
+  const ref = useRef<T>(null);
+  const [inView, setInView] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || inView) return;
+    const observer = new IntersectionObserver(
+      (items) => {
+        if (items.some((item) => item.isIntersecting)) {
+          setInView(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [inView, rootMargin]);
+  return [ref, inView] as const;
+}
 
 function formatTime(ms: number): string {
   const d = new Date(ms);
@@ -40,8 +72,18 @@ export function HistorySection({
 }) {
   const { modal, message } = App.useApp();
   const [clearing, setClearing] = useState(false);
-  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
-  const visible = entries.slice(0, visibleCount);
+  const [columns, setColumns] = useState(2);
+  const [pages, setPages] = useState(1);
+  const [sectionRef, inView] = useInView<HTMLElement>("200px");
+  const visibleCount = columns * ROWS_PER_PAGE * pages;
+  const visible = inView ? entries.slice(0, visibleCount) : [];
+
+  useEffect(() => {
+    const update = () => setColumns(getColumnCount());
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, []);
 
   function handleClearAll() {
     modal.confirm({
@@ -94,7 +136,10 @@ export function HistorySection({
   }
 
   return (
-    <section className="glass flex flex-col gap-4 rounded-2xl p-4 sm:rounded-3xl sm:p-5">
+    <section
+      ref={sectionRef}
+      className="glass flex flex-col gap-4 rounded-2xl p-4 sm:rounded-3xl sm:p-5"
+    >
       <div className="flex items-center justify-between gap-2">
         <h2 className="inline-flex items-center gap-2 text-sm font-semibold text-sand-800 dark:text-sand-200">
           <History className="h-4 w-4 text-clay-600 dark:text-clay-400" />
@@ -189,10 +234,10 @@ export function HistorySection({
         </div>
       </Image.PreviewGroup>
 
-      {visibleCount < entries.length && (
+      {inView && visibleCount < entries.length && (
         <button
           type="button"
-          onClick={() => setVisibleCount((n) => n + PAGE_SIZE)}
+          onClick={() => setPages((n) => n + 1)}
           className="self-center rounded-lg border border-sand-200 px-4 py-1.5 text-xs text-sand-600 transition hover:border-clay-300 hover:text-clay-700 dark:border-sand-700 dark:text-sand-400 dark:hover:border-clay-500/60 dark:hover:text-clay-300"
         >
           显示更多（还有 {entries.length - visibleCount} 张）
