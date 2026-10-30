@@ -51,10 +51,27 @@ export type GenerateApiError = {
 
 export type GenerateApiResult = ImagesGenerationsResponse | GenerateApiError;
 
-export function isGenerateError(
-  result: GenerateApiResult,
-): result is GenerateApiError {
+export function isGenerateError(result: object): result is GenerateApiError {
   return typeof (result as GenerateApiError).error === "string";
+}
+
+/**
+ * 读接口响应。本站路由出错时返回 { error, detail }；但反代超时、网关报错等情况
+ * 返回的可能是 HTML / 纯文本，直接 res.json() 会抛出看不懂的 SyntaxError，
+ * 这里把原文放进 detail，让前端能完整展示。
+ */
+export async function readApiJson<T>(
+  res: Response,
+): Promise<T | GenerateApiError> {
+  const text = await res.text();
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    return {
+      error: `请求失败 (${res.status}${res.statusText ? ` ${res.statusText}` : ""})，返回的不是 JSON`,
+      detail: text || undefined,
+    };
+  }
 }
 
 export function mimeFromFormat(format: string | undefined): string {

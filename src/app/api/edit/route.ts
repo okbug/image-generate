@@ -5,6 +5,7 @@ import {
   resolveCredentials,
 } from "@/lib/api-credentials";
 import { buildUpstreamHeaders } from "@/lib/client-info";
+import { describeFetchError } from "@/lib/fetch-error";
 import { storeGeneratedImages } from "@/lib/generated-images";
 import { resolveImageCount, resolveImageModel } from "@/lib/models";
 import type { ImagesGenerationsResponse } from "@/types/images";
@@ -90,7 +91,10 @@ export async function POST(req: Request) {
     });
   } catch (err) {
     return NextResponse.json(
-      { error: `无法访问上游服务 (${baseUrl})`, detail: String(err) },
+      {
+        error: `无法访问上游服务 (${baseUrl})`,
+        detail: describeFetchError(err),
+      },
       { status: 502 },
     );
   }

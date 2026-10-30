@@ -1,9 +1,17 @@
 "use client";
 
-import { use, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import {
+  use,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 
 import { CustomApiModal } from "@/components/CustomApiModal";
 import { ApiKeyNotice } from "@/components/workshop/ApiKeyNotice";
+import { ErrorCard } from "@/components/workshop/ErrorCard";
 import {
   EDIT_DEFAULT_PROMPT,
   ImageSource,
@@ -42,6 +50,7 @@ import {
   type GenerateApiResult,
   type ImagesGenerationsResponse,
   isGenerateError,
+  readApiJson,
 } from "@/types/images";
 
 function noopSubscribe() {
@@ -91,7 +100,16 @@ export default function Home({
   const canToggleOptimize =
     optimizeUndo !== null &&
     prompt === (optimizeUndo.undone ? optimizeUndo.before : optimizeUndo.after);
-  const [error, setError] = useState<string | null>(null);
+  // detail 是上游原始报错，在红色卡片里完整展示
+  const [error, setErrorState] = useState<{
+    message: string;
+    detail?: string;
+  } | null>(null);
+  const setError = useCallback(
+    (message: string | null, detail?: string) =>
+      setErrorState(message === null ? null : { message, detail }),
+    [],
+  );
   const {
     uploadedImages,
     uploadFileList,
@@ -220,13 +238,11 @@ export default function Home({
         }),
       });
 
-      const json = (await res.json()) as GenerateApiResult;
+      const json = await readApiJson<GenerateApiResult>(res);
 
       if (!res.ok || isGenerateError(json)) {
-        const message = isGenerateError(json)
-          ? json.error
-          : `请求失败 (${res.status})`;
-        setError(message);
+        if (isGenerateError(json)) setError(json.error, json.detail);
+        else setError(`请求失败 (${res.status})`);
         return;
       }
 
@@ -276,10 +292,14 @@ export default function Home({
           mode,
         }),
       });
-      const json = (await res.json()) as { prompt?: string; error?: string };
+      const json = await readApiJson<{ prompt?: string }>(res);
       if (controller.signal.aborted) return;
+      if (isGenerateError(json)) {
+        setError(json.error, json.detail);
+        return;
+      }
       if (!res.ok || !json.prompt) {
-        setError(json.error ?? `优化失败 (${res.status})`);
+        setError(`优化失败 (${res.status})`);
         return;
       }
       if (json.prompt !== prompt) {
@@ -413,11 +433,10 @@ export default function Home({
           quality,
         }),
       });
-      const json = (await res.json()) as GenerateApiResult;
+      const json = await readApiJson<GenerateApiResult>(res);
       if (!res.ok || isGenerateError(json)) {
-        setError(
-          isGenerateError(json) ? json.error : `请求失败 (${res.status})`,
-        );
+        if (isGenerateError(json)) setError(json.error, json.detail);
+        else setError(`请求失败 (${res.status})`);
         return;
       }
       if (!json.data || json.data.length === 0) {
@@ -581,11 +600,7 @@ export default function Home({
           />
         </form>
 
-        {error && (
-          <div className="rounded-2xl border border-red-200 bg-red-50/80 px-5 py-4 text-sm text-red-700 backdrop-blur dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300">
-            <strong className="font-semibold">出错了：</strong> {error}
-          </div>
-        )}
+        {error && <ErrorCard message={error.message} detail={error.detail} />}
 
         {result && renderedItems.length > 0 && (
           <ResultSection
