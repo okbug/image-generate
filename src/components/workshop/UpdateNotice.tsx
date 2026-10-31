@@ -5,6 +5,7 @@ import { useRef, useState, useSyncExternalStore } from "react";
 import { Modal } from "antd";
 import {
   Brain,
+  CircleHelp,
   CloudCheck,
   History,
   type LucideIcon,
@@ -30,6 +31,11 @@ const RELEASES: { date: string; items: ReleaseItem[] }[] = [
         icon: Brain,
         title: "优化提示词可设置思考强度",
         desc: "在「API 与模型设置」里选择 low / medium / high / max，默认 high，越高越细致但越慢。",
+      },
+      {
+        icon: CircleHelp,
+        title: "新增「不知道怎么写？」",
+        desc: "提示词输入框右下角点开，有写法公式、前后对比示例（可一键填入）、小技巧，以及负面提示词的用法说明。",
       },
     ],
   },
