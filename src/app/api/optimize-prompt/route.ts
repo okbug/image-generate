@@ -6,7 +6,7 @@ import {
 } from "@/lib/api-credentials";
 import { buildUpstreamHeaders } from "@/lib/client-info";
 import { describeFetchError } from "@/lib/fetch-error";
-import { resolveOptimizeModel } from "@/lib/models";
+import { resolveOptimizeModel, resolveReasoningEffort } from "@/lib/models";
 
 export const runtime = "nodejs";
 
@@ -15,6 +15,7 @@ type OptimizeMode = "generate" | "edit";
 type OptimizeBody = {
   prompt?: string;
   model?: string;
+  reasoningEffort?: string;
   mode?: OptimizeMode;
 };
 
@@ -132,6 +133,7 @@ export async function POST(req: Request) {
         }),
         body: JSON.stringify({
           model: resolveOptimizeModel(body.model),
+          reasoning_effort: resolveReasoningEffort(body.reasoningEffort),
           messages: [
             { role: "system", content: SYSTEM_PROMPTS[resolveMode(body.mode)] },
             { role: "user", content: original },

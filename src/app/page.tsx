@@ -289,6 +289,7 @@ export default function Home({
         body: JSON.stringify({
           prompt,
           model: settings.optimizeModel,
+          reasoningEffort: settings.reasoningEffort,
           mode,
         }),
       });

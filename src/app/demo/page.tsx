@@ -159,12 +159,13 @@ function ApplyCard({ demo }: { demo: DemoCredentials }) {
       okText: "确认填入",
       cancelText: "取消",
       onOk: () => {
-        // 优化提示词模型是用户自己的偏好，保留原值
+        // 优化提示词模型和思考强度是用户自己的偏好，保留原值
         save({
           enabled: true,
           baseUrl: demo.baseUrl,
           apiKey: demo.apiKey,
           optimizeModel: settings.optimizeModel,
+          reasoningEffort: settings.reasoningEffort,
         });
         void message.success("配置已填入，正在进入工坊");
         router.push("/");

@@ -4,6 +4,7 @@ import { useRef, useState, useSyncExternalStore } from "react";
 
 import { Modal } from "antd";
 import {
+  Brain,
   CloudCheck,
   History,
   type LucideIcon,
@@ -22,6 +23,16 @@ type ReleaseItem = {
  * 弹窗按日期分组展示全部记录。
  */
 const RELEASES: { date: string; items: ReleaseItem[] }[] = [
+  {
+    date: "2026-10-31",
+    items: [
+      {
+        icon: Brain,
+        title: "优化提示词可设置思考强度",
+        desc: "在「API 与模型设置」里选择 low / medium / high / max，默认 high，越高越细致但越慢。",
+      },
+    ],
+  },
   {
     date: "2026-10-25",
     items: [

@@ -1,9 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { Button, Drawer, Input, Modal } from "antd";
+import { Button, Drawer, Input, Modal, Segmented } from "antd";
 
-import { DEFAULT_OPTIMIZE_MODEL } from "@/lib/models";
+import {
+  DEFAULT_OPTIMIZE_MODEL,
+  DEFAULT_REASONING_EFFORT,
+  REASONING_EFFORT_OPTIONS,
+  type ReasoningEffort,
+} from "@/lib/models";
 import type { CustomApiSettings } from "@/lib/use-custom-api";
 import { useMediaQuery } from "@/lib/use-media-query";
 
@@ -21,6 +26,8 @@ function FormFields({
   setApiKey,
   optimizeModel,
   setOptimizeModel,
+  reasoningEffort,
+  setReasoningEffort,
 }: {
   baseUrl: string;
   setBaseUrl: (v: string) => void;
@@ -28,6 +35,8 @@ function FormFields({
   setApiKey: (v: string) => void;
   optimizeModel: string;
   setOptimizeModel: (v: string) => void;
+  reasoningEffort: ReasoningEffort;
+  setReasoningEffort: (v: ReasoningEffort) => void;
 }) {
   return (
     <div className="flex flex-col gap-4 pt-1">
@@ -95,6 +104,26 @@ function FormFields({
           （前提是你的上游支持该模型）。
         </span>
       </label>
+
+      <div className="flex flex-col gap-1.5">
+        <span className="text-sm font-medium">思考强度</span>
+        <Segmented<ReasoningEffort>
+          block
+          value={reasoningEffort}
+          onChange={setReasoningEffort}
+          options={REASONING_EFFORT_OPTIONS.map((option) => ({
+            value: option.value,
+            label: option.label,
+          }))}
+        />
+        <span className="text-[11px] leading-relaxed text-sand-500 dark:text-sand-400">
+          优化提示词时模型的思考程度（上游参数{" "}
+          <code className="rounded bg-sand-100 px-1 py-0.5 text-[11px] dark:bg-sand-800">
+            reasoning_effort
+          </code>
+          ），越高越细致但越慢，默认 {DEFAULT_REASONING_EFFORT}。
+        </span>
+      </div>
     </div>
   );
 }
@@ -112,6 +141,9 @@ function CustomApiForm({
   const [baseUrl, setBaseUrl] = useState(initial.baseUrl);
   const [apiKey, setApiKey] = useState(initial.apiKey);
   const [optimizeModel, setOptimizeModel] = useState(initial.optimizeModel);
+  const [reasoningEffort, setReasoningEffort] = useState(
+    initial.reasoningEffort,
+  );
 
   const canSave = baseUrl.trim().length > 0 && apiKey.trim().length > 0;
 
@@ -121,6 +153,7 @@ function CustomApiForm({
       baseUrl: baseUrl.trim(),
       apiKey: apiKey.trim(),
       optimizeModel: optimizeModel.trim(),
+      reasoningEffort,
     });
     onClose();
   }
@@ -133,6 +166,8 @@ function CustomApiForm({
       setApiKey={setApiKey}
       optimizeModel={optimizeModel}
       setOptimizeModel={setOptimizeModel}
+      reasoningEffort={reasoningEffort}
+      setReasoningEffort={setReasoningEffort}
     />
   );
 

@@ -2,6 +2,12 @@
 
 import { useCallback, useMemo, useSyncExternalStore } from "react";
 
+import {
+  DEFAULT_REASONING_EFFORT,
+  type ReasoningEffort,
+  resolveReasoningEffort,
+} from "@/lib/models";
+
 const STORAGE_KEY = "image-generator:custom-api";
 
 export type CustomApiSettings = {
@@ -11,6 +17,8 @@ export type CustomApiSettings = {
   apiKey: string;
   /** 优化提示词用的模型，留空表示用默认的 DEFAULT_OPTIMIZE_MODEL。 */
   optimizeModel: string;
+  /** 优化提示词的思考强度，旧数据没有该字段时为默认档。 */
+  reasoningEffort: ReasoningEffort;
 };
 
 const EMPTY_SETTINGS: CustomApiSettings = {
@@ -18,6 +26,7 @@ const EMPTY_SETTINGS: CustomApiSettings = {
   baseUrl: "",
   apiKey: "",
   optimizeModel: "",
+  reasoningEffort: DEFAULT_REASONING_EFFORT,
 };
 
 const listeners = new Set<() => void>();
@@ -63,6 +72,7 @@ function parseSettings(raw: string | null): CustomApiSettings {
       apiKey: typeof parsed.apiKey === "string" ? parsed.apiKey : "",
       optimizeModel:
         typeof parsed.optimizeModel === "string" ? parsed.optimizeModel : "",
+      reasoningEffort: resolveReasoningEffort(parsed.reasoningEffort),
     };
   } catch {
     return EMPTY_SETTINGS;

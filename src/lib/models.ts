@@ -58,6 +58,27 @@ export function resolveOptimizeModel(model: unknown): string {
   return resolveModel(model, DEFAULT_OPTIMIZE_MODEL);
 }
 
+/** 优化提示词时的思考强度（上游 reasoning_effort），默认放数组里的 DEFAULT_REASONING_EFFORT。 */
+export const REASONING_EFFORT_OPTIONS = [
+  { value: "low", label: "low" },
+  { value: "medium", label: "medium" },
+  { value: "high", label: "high" },
+  { value: "max", label: "max" },
+] as const;
+
+export type ReasoningEffort =
+  (typeof REASONING_EFFORT_OPTIONS)[number]["value"];
+
+export const DEFAULT_REASONING_EFFORT: ReasoningEffort = "high";
+
+/** 前端存储和后端请求体共用：不在四档里的值一律回落到默认档。 */
+export function resolveReasoningEffort(value: unknown): ReasoningEffort {
+  return (
+    REASONING_EFFORT_OPTIONS.find((option) => option.value === value)?.value ??
+    DEFAULT_REASONING_EFFORT
+  );
+}
+
 /** 一次最多出几张图（上游 n 参数），前端下拉和后端校验共用。 */
 export const MAX_IMAGE_COUNT = 4;
 
