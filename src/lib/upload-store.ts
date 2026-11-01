@@ -8,7 +8,7 @@ export const UPLOAD_PERMANENT_ROUTE = "/images/permanent";
  */
 export const UPLOAD_NAME_RE =
   /^(\d{13})-(?:gen-)?[a-f0-9-]{36}\.(png|jpe?g|webp)$/i;
-export const UPLOAD_EXPIRY_MS = 30 * 60 * 1000;
+export const UPLOAD_EXPIRY_MS = 24 * 2 * 60 * 60 * 1000;
 
 /**
  * 图床密码比对：密码放在环境变量 IMAGEBED_PASSWORD（.env.local，不入库），只在服务端比对。
