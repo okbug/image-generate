@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { arrayMove } from "@dnd-kit/sortable";
 import { App, Upload, type UploadFile, type UploadProps } from "antd";
 
 import {
@@ -210,6 +211,15 @@ export function useReferenceImages({
     });
   }
 
+  /** 拖拽排序：请求按 uploadedImages 的顺序发给上游，uploadFileList 只管数量和进度，不用同步。 */
+  function reorderUploadedImages(activeUid: string, overUid: string) {
+    setUploadedImages((current) => {
+      const from = current.findIndex((image) => image.uid === activeUid);
+      const to = current.findIndex((image) => image.uid === overUid);
+      return from < 0 || to < 0 ? current : arrayMove(current, from, to);
+    });
+  }
+
   const uploadProps: UploadProps = {
     accept: UPLOAD_ACCEPT,
     multiple: true,
@@ -252,6 +262,7 @@ export function useReferenceImages({
     uploadReferenceImage,
     addReferenceUrl,
     removeUploadedImage,
+    reorderUploadedImages,
     uploadProps,
   };
 }

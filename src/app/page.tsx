@@ -119,6 +119,7 @@ export default function Home({
     uploadReferenceImage,
     addReferenceUrl,
     removeUploadedImage,
+    reorderUploadedImages,
     uploadProps,
   } = useReferenceImages({ loading, setError });
   const [result, setResult] = useState<ImagesGenerationsResponse | null>(null);
@@ -551,6 +552,7 @@ export default function Home({
               uploadedImages={uploadedImages}
               uploadFileList={uploadFileList}
               onRemoveImage={removeUploadedImage}
+              onReorderImages={reorderUploadedImages}
               externalUrl={externalUrl}
               setExternalUrl={setExternalUrl}
               parsedExternalUrls={parsedExternalUrls}

@@ -1,6 +1,23 @@
 "use client";
 
 import {
+  closestCenter,
+  DndContext,
+  type DragEndEvent,
+  KeyboardSensor,
+  MouseSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import {
+  rectSortingStrategy,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import {
   Image,
   Progress,
   Upload,
@@ -17,6 +34,139 @@ import {
   type UploadedImage,
 } from "./constants";
 
+/** 一张已上传的参考图，按住图片区域可拖动排序（移除按钮和文字不触发拖拽）。 */
+function SortableReferenceCard({
+  image,
+  index,
+  loading,
+  onRemove,
+}: {
+  image: UploadedImage;
+  index: number;
+  loading: boolean;
+  onRemove: (uid: string) => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    setActivatorNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: image.uid, disabled: loading });
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={{ transform: CSS.Translate.toString(transform), transition }}
+      className={`group relative overflow-hidden rounded-xl border bg-white/70 dark:bg-sand-900/50 ${
+        isDragging
+          ? "z-10 scale-[1.03] border-clay-400 opacity-90 shadow-xl"
+          : "border-sand-200 dark:border-sand-700"
+      }`}
+    >
+      {/* touch-manipulation 保留手指滚动；后三项压掉移动端长按图片的系统菜单和文字选中 */}
+      <div
+        ref={setActivatorNodeRef}
+        {...attributes}
+        {...listeners}
+        className={`touch-manipulation select-none [-webkit-touch-callout:none] [-webkit-user-select:none] ${
+          loading
+            ? ""
+            : "[&_.ant-image-cover]:!cursor-grab [&_.ant-image-cover]:active:!cursor-grabbing"
+        }`}
+      >
+        <Image
+          src={image.previewSrc}
+          alt={`已上传参考图 ${index + 1}`}
+          draggable={false}
+          className="!h-36 !w-full object-cover"
+          preview={{ mask: "预览" }}
+        />
+      </div>
+      <button
+        type="button"
+        onClick={() => onRemove(image.uid)}
+        disabled={loading}
+        title="移除图片"
+        className="absolute top-2 right-2 inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/70 bg-sand-950/70 text-white shadow-sm transition hover:bg-red-600 disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        <X className="h-4 w-4" />
+      </button>
+      <div className="flex flex-col gap-1 px-3 py-2 text-xs">
+        <span className="flex items-center gap-1.5 font-medium text-sand-800 dark:text-sand-200">
+          <ImagePlus className="h-3.5 w-3.5" />
+          参考图 {index + 1}
+        </span>
+        <span className="truncate text-sand-500 dark:text-sand-500">
+          {image.name || image.fileName}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * 已上传参考图的网格。鼠标按住移动 5px 开始拖，触屏长按 250ms 开始拖，
+ * 这样单击 / 轻点仍是预览，手指直接滑动仍是滚动页面。
+ */
+function SortableReferenceGrid({
+  images,
+  loading,
+  onRemove,
+  onReorder,
+}: {
+  images: UploadedImage[];
+  loading: boolean;
+  onRemove: (uid: string) => void;
+  onReorder: (activeUid: string, overUid: string) => void;
+}) {
+  const sensors = useSensors(
+    useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, {
+      activationConstraint: { delay: 250, tolerance: 5 },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    }),
+  );
+
+  function handleDragEnd({ active, over }: DragEndEvent) {
+    if (over && active.id !== over.id) {
+      onReorder(String(active.id), String(over.id));
+    }
+  }
+
+  return (
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCenter}
+      onDragEnd={handleDragEnd}
+    >
+      <SortableContext
+        items={images.map((image) => image.uid)}
+        strategy={rectSortingStrategy}
+      >
+        {/* 不传 items 时 PreviewGroup 按图片注册的先后翻页，排序后顺序会对不上 */}
+        <Image.PreviewGroup items={images.map((image) => image.previewSrc)}>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            {images.map((image, idx) => (
+              <SortableReferenceCard
+                key={image.uid}
+                image={image}
+                index={idx}
+                loading={loading}
+                onRemove={onRemove}
+              />
+            ))}
+          </div>
+        </Image.PreviewGroup>
+      </SortableContext>
+    </DndContext>
+  );
+}
+
 /** 编辑模式下的参考图区域：上传图片 / 填写图片 URL 两种来源。 */
 export function ReferenceImagesInput({
   imageSource,
@@ -27,6 +177,7 @@ export function ReferenceImagesInput({
   uploadedImages,
   uploadFileList,
   onRemoveImage,
+  onReorderImages,
   externalUrl,
   setExternalUrl,
   parsedExternalUrls,
@@ -39,6 +190,7 @@ export function ReferenceImagesInput({
   uploadedImages: UploadedImage[];
   uploadFileList: UploadFile[];
   onRemoveImage: (uid: string) => void;
+  onReorderImages: (activeUid: string, overUid: string) => void;
   externalUrl: string;
   setExternalUrl: (value: string) => void;
   parsedExternalUrls: string[];
@@ -132,46 +284,18 @@ export function ReferenceImagesInput({
           )}
 
           {uploadedImages.length > 0 && (
-            <Image.PreviewGroup>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                {uploadedImages.map((image, idx) => (
-                  <div
-                    key={image.uid}
-                    className="group relative overflow-hidden rounded-xl border border-sand-200 bg-white/70 dark:border-sand-700 dark:bg-sand-900/50"
-                  >
-                    <Image
-                      src={image.previewSrc}
-                      alt={`已上传参考图 ${idx + 1}`}
-                      className="!h-36 !w-full object-cover"
-                      preview={{ mask: "预览" }}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => onRemoveImage(image.uid)}
-                      disabled={loading}
-                      title="移除图片"
-                      className="absolute top-2 right-2 inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/70 bg-sand-950/70 text-white shadow-sm transition hover:bg-red-600 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                    <div className="flex flex-col gap-1 px-3 py-2 text-xs">
-                      <span className="flex items-center gap-1.5 font-medium text-sand-800 dark:text-sand-200">
-                        <ImagePlus className="h-3.5 w-3.5" />
-                        参考图 {idx + 1}
-                      </span>
-                      <span className="truncate text-sand-500 dark:text-sand-500">
-                        {image.name || image.fileName}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </Image.PreviewGroup>
+            <SortableReferenceGrid
+              images={uploadedImages}
+              loading={loading}
+              onRemove={onRemoveImage}
+              onReorder={onReorderImages}
+            />
           )}
 
           <p className="text-[11px] text-sand-500 dark:text-sand-500">
             已上传 {uploadedImages.length}/{MAX_UPLOAD_COUNT}
             {uploading ? "，仍有图片上传中" : ""}
+            {uploadedImages.length > 1 ? "，按住图片可拖动排序" : ""}
           </p>
         </div>
       ) : (

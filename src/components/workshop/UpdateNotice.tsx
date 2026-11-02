@@ -4,6 +4,7 @@ import { useRef, useState, useSyncExternalStore } from "react";
 
 import { Modal } from "antd";
 import {
+  ArrowUpDown,
   Brain,
   CircleHelp,
   CloudCheck,
@@ -24,6 +25,16 @@ type ReleaseItem = {
  * 弹窗按日期分组展示全部记录。
  */
 const RELEASES: { date: string; items: ReleaseItem[] }[] = [
+  {
+    date: "2026-11-02",
+    items: [
+      {
+        icon: ArrowUpDown,
+        title: "参考图可拖动排序",
+        desc: "编辑模式下，按住已上传的参考图拖动即可调整顺序（手机上长按后拖动），提示词里的「图 1」「图 2」按调整后的顺序对应。",
+      },
+    ],
+  },
   {
     date: "2026-10-31",
     items: [
