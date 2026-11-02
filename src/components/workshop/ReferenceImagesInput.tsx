@@ -81,7 +81,8 @@ function SortableReferenceCard({
           src={image.previewSrc}
           alt={`已上传参考图 ${index + 1}`}
           draggable={false}
-          className="!h-36 !w-full object-cover"
+          rootClassName="!block !aspect-square !w-full"
+          className="!absolute inset-0 !h-full !w-full object-cover object-top"
           preview={{ mask: "预览" }}
         />
       </div>
@@ -150,7 +151,7 @@ function SortableReferenceGrid({
       >
         {/* 不传 items 时 PreviewGroup 按图片注册的先后翻页，排序后顺序会对不上 */}
         <Image.PreviewGroup items={images.map((image) => image.previewSrc)}>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             {images.map((image, idx) => (
               <SortableReferenceCard
                 key={image.uid}
