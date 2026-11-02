@@ -38,6 +38,9 @@ yarn-error.log*
 /public/images/tmp/*
 !/public/images/tmp/.gitkeep
 
+# imagebed permanent images (created at runtime)
+/public/images/permanent/*
+
 # vercel
 .vercel
 

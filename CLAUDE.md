@@ -88,7 +88,7 @@ npm start        # 手动起 standalone —— 本机不要用，生产由 syste
 - 域名：`https://image.131438.xyz` 和 `https://image.fe.sb`，都在 `/etc/caddy/Caddyfile` 里 `reverse_proxy 127.0.0.1:3005`，Caddy 自动签发/续期证书。改 Caddyfile 后 `systemctl reload caddy`；加新域名只需再加一个同样的 block（DNS 先指到本机）。
 - 进程由 systemd 管理：`image-generate.service`
   - 单元文件 `/etc/systemd/system/image-generate.service`：`WorkingDirectory=/root/projects/image-generate`，`ExecStart=/root/.nvm/versions/node/v22.22.1/bin/node .next/standalone/server.js`，`EnvironmentFile=.env.local`，`PORT=3005`，`HOSTNAME=0.0.0.0`，`Restart=always`。
-  - drop-in `/etc/systemd/system/image-generate.service.d/override.conf`：`UPLOAD_TMP_DIR=/root/projects/image-generate/public/images/tmp`。
+  - drop-in `/etc/systemd/system/image-generate.service.d/override.conf`：`UPLOAD_TMP_DIR=/root/projects/image-generate/public/images/tmp`、`UPLOAD_PERMANENT_DIR=/root/projects/image-generate/public/images/permanent`。
   - 环境变量 `IMAGE_API_BASE_URL` / `IMAGE_API_KEY` 在 `.env.local`（不入库，模板见 `.env.example`）。
 - Node 版本以 ExecStart 里的 nvm 路径为准（v22.22.1）；升级 node 要同步改单元文件。
 
@@ -108,9 +108,9 @@ curl -sI http://127.0.0.1:3005 | head -1       # 200 即可
 - `public/` 里新放的静态文件不会马上可访问：线上读的是 `.next/standalone/public/` 这份拷贝，要 `npm run build` 让 postbuild 重新拷，或手动 `cp` 进去（2026-09-02 把 tar.gz 丢进 `public/` 后 404 就是这个原因）。
 - 本机没有 `lsof` / `zip` / `rsync`。查端口用 `ss -ltnp | grep 3005` 或 `fuser 3005/tcp`。
 
-**已知隐患：图床永久目录**
-- `.next/standalone/server.js` 会 `process.chdir(__dirname)`，而 service 只设置了 `UPLOAD_TMP_DIR`，没设 `UPLOAD_PERMANENT_DIR`，所以图床永久图实际落在 `.next/standalone/public/images/permanent/`，不在项目根的 `public/images/permanent/`。
-- `next build` 默认 `cleanDistDir: true`，会清空 `.next/`，**重新 build 会把已上传的永久图一起删掉**。要保住这些图，部署前先把 `.next/standalone/public/images/permanent/` 备份出来；根治办法是在 `override.conf` 里加 `Environment=UPLOAD_PERMANENT_DIR=/root/projects/image-generate/public/images/permanent`，然后 `daemon-reload` + `restart`，并把旧文件挪过去。
+**图床永久目录（2026-11-02 已修复）**
+- `.next/standalone/server.js` 会 `process.chdir(__dirname)`，以前 service 没设 `UPLOAD_PERMANENT_DIR`，永久图落在 `.next/standalone/public/images/permanent/`，而 `next build` 会清空 `.next/`，所以每次 build 都会删掉永久图（2026-11-02 发现线上目录已空，最后一份备份是 10-25 的，很可能是之后某次 build 清掉的）。
+- 现在 `override.conf` 已设 `UPLOAD_PERMANENT_DIR`，永久图存在项目根的 `public/images/permanent/`（已加入 `.gitignore`），build 不会再删，部署前不用再备份。`/root/imagebed-permanent-backup-20261025233454` 是留存的最后一份旧备份。
 
 ## 历史会话摘要（本机 `~/.claude/projects/-root-projects-image-generate/`）
 
