@@ -5,12 +5,15 @@ import { Button, Drawer, Input, Modal, Segmented } from "antd";
 
 import type { ActivationStatus } from "@/lib/activation-shared";
 import {
+  type CustomApiSettings,
+  verifyActivationCode,
+} from "@/lib/use-custom-api";
+import {
   DEFAULT_OPTIMIZE_MODEL,
   DEFAULT_REASONING_EFFORT,
   REASONING_EFFORT_OPTIONS,
   type ReasoningEffort,
 } from "@/lib/models";
-import type { CustomApiSettings } from "@/lib/use-custom-api";
 import { useMediaQuery } from "@/lib/use-media-query";
 
 type Props = {
@@ -20,22 +23,7 @@ type Props = {
   onSave: (next: CustomApiSettings) => void;
 };
 
-async function verifyActivationCode(
-  code: string,
-): Promise<ActivationStatus | { error: string }> {
-  try {
-    const res = await fetch("/api/activation/verify", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ code }),
-    });
-    return (await res.json()) as ActivationStatus | { error: string };
-  } catch {
-    return { error: "网络错误，请重试" };
-  }
-}
-
-/** 「使用官方生图」：校验激活码后记在表单里，点保存才生效。 */
+/** 「使用官方生图」：校验激活码后记在表单里，点保存才生效。日常开关在首页，这里负责激活和移除。 */
 function OfficialImageSection({
   code,
   setCode,
@@ -80,7 +68,7 @@ function OfficialImageSection({
     setInputOpen(false);
   }
 
-  function handleTurnOff() {
+  function handleRemove() {
     setCode("");
     setStatus(null);
     setError(null);
@@ -91,8 +79,8 @@ function OfficialImageSection({
       <div className="flex items-center justify-between gap-2">
         <span className="text-sm font-medium">使用官方生图</span>
         {code ? (
-          <Button size="small" onClick={handleTurnOff}>
-            关闭
+          <Button size="small" onClick={handleRemove}>
+            移除激活码
           </Button>
         ) : (
           !inputOpen && (
@@ -286,6 +274,9 @@ function CustomApiForm({
       optimizeModel: optimizeModel.trim(),
       reasoningEffort,
       activationCode,
+      // 新输入的激活码默认开启；没换码就保留首页开关的状态
+      officialEnabled:
+        activationCode !== initial.activationCode || initial.officialEnabled,
     });
     onClose();
   }

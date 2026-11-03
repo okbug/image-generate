@@ -34,6 +34,11 @@ const RELEASES: { date: string; items: ReleaseItem[] }[] = [
         title: "新增「使用官方生图」",
         desc: "在「API 与模型设置」里输入激活码即可开启，生图和改图走 OpenAI 官方接口，优化提示词仍用你自己的 API。想体验真 4K 图片请联系本人。",
       },
+      {
+        icon: ToggleRight,
+        title: "官方生图可随时开关，默认尺寸改为 2K",
+        desc: "激活后可在首页生成按钮上方开启或关闭官方生图。默认尺寸从 4K 改为 2K，需要 4K 仍可在尺寸里选择。",
+      },
     ],
   },
   {

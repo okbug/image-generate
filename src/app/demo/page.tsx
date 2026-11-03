@@ -167,6 +167,7 @@ function ApplyCard({ demo }: { demo: DemoCredentials }) {
           optimizeModel: settings.optimizeModel,
           reasoningEffort: settings.reasoningEffort,
           activationCode: settings.activationCode,
+          officialEnabled: settings.officialEnabled,
         });
         void message.success("配置已填入，正在进入工坊");
         router.push("/");

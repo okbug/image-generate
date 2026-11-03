@@ -2,7 +2,10 @@
 
 import { useCallback, useMemo, useSyncExternalStore } from "react";
 
-import { ACTIVATION_HEADER } from "@/lib/activation-shared";
+import {
+  ACTIVATION_HEADER,
+  type ActivationStatus,
+} from "@/lib/activation-shared";
 import {
   DEFAULT_REASONING_EFFORT,
   type ReasoningEffort,
@@ -20,9 +23,27 @@ export type CustomApiSettings = {
   optimizeModel: string;
   /** 优化提示词的思考强度，旧数据没有该字段时为默认档。 */
   reasoningEffort: ReasoningEffort;
-  /** 「使用官方生图」的激活码，空串表示未开启。只影响生图和改图，优化提示词仍走用户自己的 API。 */
+  /** 「使用官方生图」的激活码，空串表示没有激活。只影响生图和改图，优化提示词仍走用户自己的 API。 */
   activationCode: string;
+  /** 已激活时是否走官方，首页可随时开关，关闭后激活码仍保留。 */
+  officialEnabled: boolean;
 };
+
+/** 校验激活码，通过时返回使用人和今日额度。 */
+export async function verifyActivationCode(
+  code: string,
+): Promise<ActivationStatus | { error: string }> {
+  try {
+    const res = await fetch("/api/activation/verify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code }),
+    });
+    return (await res.json()) as ActivationStatus | { error: string };
+  } catch {
+    return { error: "网络错误，请重试" };
+  }
+}
 
 const EMPTY_SETTINGS: CustomApiSettings = {
   enabled: false,
@@ -31,6 +52,7 @@ const EMPTY_SETTINGS: CustomApiSettings = {
   optimizeModel: "",
   reasoningEffort: DEFAULT_REASONING_EFFORT,
   activationCode: "",
+  officialEnabled: true,
 };
 
 const listeners = new Set<() => void>();
@@ -79,6 +101,8 @@ function parseSettings(raw: string | null): CustomApiSettings {
       reasoningEffort: resolveReasoningEffort(parsed.reasoningEffort),
       activationCode:
         typeof parsed.activationCode === "string" ? parsed.activationCode : "",
+      // 旧数据没有这个字段，当时有激活码就是开启状态
+      officialEnabled: parsed.officialEnabled !== false,
     };
   } catch {
     return EMPTY_SETTINGS;
@@ -124,10 +148,12 @@ export function useCustomApi() {
     (extra?: HeadersInit): Headers => {
       const headers = buildHeaders(extra);
       const code = settings.activationCode.trim();
-      if (code) headers.set(ACTIVATION_HEADER, code);
+      if (code && settings.officialEnabled) {
+        headers.set(ACTIVATION_HEADER, code);
+      }
       return headers;
     },
-    [buildHeaders, settings.activationCode],
+    [buildHeaders, settings.activationCode, settings.officialEnabled],
   );
 
   return {

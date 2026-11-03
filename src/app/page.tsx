@@ -38,6 +38,7 @@ import {
 import { SubmitBar } from "@/components/workshop/SubmitBar";
 import { TimingPanel } from "@/components/workshop/TimingPanel";
 import { UpdateNotice } from "@/components/workshop/UpdateNotice";
+import { OfficialImageToggle } from "@/components/workshop/OfficialImageToggle";
 import { useReferenceImages } from "@/components/workshop/use-reference-images";
 import { DEFAULT_IMAGE_MODEL } from "@/lib/models";
 import { useCustomApi } from "@/lib/use-custom-api";
@@ -595,9 +596,14 @@ export default function Home({
           />
 
           {customApiActive && settings.activationCode && (
-            <p className="text-xs text-clay-700 dark:text-clay-300">
-              官方生图已开启：生图和改图走官方接口，优化提示词仍用你自己的 API。
-            </p>
+            <OfficialImageToggle
+              code={settings.activationCode}
+              enabled={settings.officialEnabled}
+              disabled={loading}
+              onChange={(officialEnabled) =>
+                saveCustomApi({ ...settings, officialEnabled })
+              }
+            />
           )}
 
           <SubmitBar
