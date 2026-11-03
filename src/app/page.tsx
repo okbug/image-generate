@@ -9,6 +9,8 @@ import {
   useSyncExternalStore,
 } from "react";
 
+import { App } from "antd";
+
 import { CustomApiModal } from "@/components/CustomApiModal";
 import { ApiKeyNotice } from "@/components/workshop/ApiKeyNotice";
 import { ErrorCard } from "@/components/workshop/ErrorCard";
@@ -42,6 +44,7 @@ import { OfficialImageToggle } from "@/components/workshop/OfficialImageToggle";
 import { useReferenceImages } from "@/components/workshop/use-reference-images";
 import { DEFAULT_IMAGE_MODEL } from "@/lib/models";
 import { useCustomApi } from "@/lib/use-custom-api";
+import { isQuotaExceeded, useOfficialQuota } from "@/lib/use-official-quota";
 import {
   type HistoryEntry,
   useGenerationHistory,
@@ -137,6 +140,14 @@ export default function Home({
     buildImageHeaders,
     active: customApiActive,
   } = useCustomApi();
+  const { modal, message } = App.useApp();
+  const officialActive =
+    customApiActive &&
+    Boolean(settings.activationCode) &&
+    settings.officialEnabled;
+  const { status: officialStatus, refresh: refreshOfficialQuota } =
+    useOfficialQuota(officialActive ? settings.activationCode : "", loading);
+  const [checkingQuota, setCheckingQuota] = useState(false);
   const {
     entries: timingEntries,
     add: addTiming,
@@ -467,14 +478,46 @@ export default function Home({
     }
   }
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
     if (!customApiActive) {
-      e.preventDefault();
       setApiModalOpen(true);
       return;
     }
-    if (mode === Mode.Edit) return handleEdit(e);
-    return handleGenerate(e);
+    const submit = () =>
+      mode === Mode.Edit ? handleEdit(e) : handleGenerate(e);
+    if (!officialActive) return submit();
+    if (loading || checkingQuota) return;
+
+    // 官方生图花的是站长额度：先查最新额度，再二次确认
+    setCheckingQuota(true);
+    const quota = await refreshOfficialQuota();
+    setCheckingQuota(false);
+    if ("error" in quota) {
+      void message.error(quota.error);
+      return;
+    }
+    if (isQuotaExceeded(quota)) return;
+
+    modal.confirm({
+      title: `确认使用官方${mode === Mode.Edit ? "改图" : "生图"}？`,
+      content: (
+        <div className="flex flex-col gap-1 pt-1 text-sm">
+          <p>
+            今日额度：已用 {quota.usedToday} / {quota.dailyLimit} 张，剩余{" "}
+            {quota.dailyLimit - quota.usedToday} 张
+          </p>
+          <p>本次使用 1 张，成功出图才计入，北京时间 0 点重置。</p>
+          <p className="text-sand-500 dark:text-sand-400">模型：{model}</p>
+        </div>
+      ),
+      okText: "确认生成",
+      cancelText: "取消",
+      centered: true,
+      onOk: () => {
+        void submit();
+      },
+    });
   }
 
   function handleSwitchMode(next: Mode) {
@@ -513,6 +556,8 @@ export default function Home({
     !customApiActive ||
     loading ||
     uploading ||
+    checkingQuota ||
+    isQuotaExceeded(officialStatus) ||
     !prompt.trim() ||
     (mode === Mode.Edit &&
       imageSource === ImageSource.Upload &&
@@ -599,6 +644,7 @@ export default function Home({
             <OfficialImageToggle
               code={settings.activationCode}
               enabled={settings.officialEnabled}
+              status={officialStatus}
               disabled={loading}
               onChange={(officialEnabled) =>
                 saveCustomApi({ ...settings, officialEnabled })
