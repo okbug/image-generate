@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button, Drawer, Input, Modal, Segmented } from "antd";
 
+import type { ActivationStatus } from "@/lib/activation-shared";
 import {
   DEFAULT_OPTIMIZE_MODEL,
   DEFAULT_REASONING_EFFORT,
@@ -19,6 +20,129 @@ type Props = {
   onSave: (next: CustomApiSettings) => void;
 };
 
+async function verifyActivationCode(
+  code: string,
+): Promise<ActivationStatus | { error: string }> {
+  try {
+    const res = await fetch("/api/activation/verify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code }),
+    });
+    return (await res.json()) as ActivationStatus | { error: string };
+  } catch {
+    return { error: "网络错误，请重试" };
+  }
+}
+
+/** 「使用官方生图」：校验激活码后记在表单里，点保存才生效。 */
+function OfficialImageSection({
+  code,
+  setCode,
+}: {
+  code: string;
+  setCode: (v: string) => void;
+}) {
+  const [inputOpen, setInputOpen] = useState(false);
+  const [input, setInput] = useState("");
+  const [verifying, setVerifying] = useState(false);
+  const [status, setStatus] = useState<ActivationStatus | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  // 打开设置时查一次已保存激活码的状态和今日额度
+  useEffect(() => {
+    if (!code) return;
+    let cancelled = false;
+    void verifyActivationCode(code).then((result) => {
+      if (cancelled) return;
+      if ("error" in result) setError(result.error);
+      else setStatus(result);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [code]);
+
+  async function handleActivate() {
+    const value = input.trim();
+    if (!value || verifying) return;
+    setVerifying(true);
+    setError(null);
+    const result = await verifyActivationCode(value);
+    setVerifying(false);
+    if ("error" in result) {
+      setError(result.error);
+      return;
+    }
+    setStatus(result);
+    setCode(value);
+    setInput("");
+    setInputOpen(false);
+  }
+
+  function handleTurnOff() {
+    setCode("");
+    setStatus(null);
+    setError(null);
+  }
+
+  return (
+    <div className="flex flex-col gap-2 border-t border-sand-200/80 pt-4 dark:border-sand-800">
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-sm font-medium">使用官方生图</span>
+        {code ? (
+          <Button size="small" onClick={handleTurnOff}>
+            关闭
+          </Button>
+        ) : (
+          !inputOpen && (
+            <Button size="small" onClick={() => setInputOpen(true)}>
+              使用官方生图
+            </Button>
+          )
+        )}
+      </div>
+
+      {inputOpen && !code && (
+        <div className="flex gap-2">
+          <Input
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onPressEnter={() => void handleActivate()}
+            placeholder="输入激活码"
+            autoComplete="off"
+            autoFocus
+          />
+          <Button
+            type="primary"
+            loading={verifying}
+            disabled={!input.trim()}
+            onClick={() => void handleActivate()}
+          >
+            激活
+          </Button>
+        </div>
+      )}
+
+      {code && status && (
+        <p className="text-xs text-clay-700 dark:text-clay-300">
+          已激活（{status.user}），今日已用 {status.usedToday}/
+          {status.dailyLimit} 张，北京时间 0 点重置。点「保存」后生效。
+        </p>
+      )}
+      {error && (
+        <p className="text-xs text-red-600 dark:text-red-300">{error}</p>
+      )}
+
+      <p className="text-[11px] leading-relaxed text-sand-500 dark:text-sand-400">
+        开启后生图和改图由本站调用 OpenAI 官方接口，仍需填写上面的 BaseURL 和
+        Key，优化提示词继续使用它们。本站会记录每次调用的使用人、模型、画质、尺寸、张数和
+        IP，不记录提示词内容。
+      </p>
+    </div>
+  );
+}
+
 function FormFields({
   baseUrl,
   setBaseUrl,
@@ -28,6 +152,8 @@ function FormFields({
   setOptimizeModel,
   reasoningEffort,
   setReasoningEffort,
+  activationCode,
+  setActivationCode,
 }: {
   baseUrl: string;
   setBaseUrl: (v: string) => void;
@@ -37,6 +163,8 @@ function FormFields({
   setOptimizeModel: (v: string) => void;
   reasoningEffort: ReasoningEffort;
   setReasoningEffort: (v: ReasoningEffort) => void;
+  activationCode: string;
+  setActivationCode: (v: string) => void;
 }) {
   return (
     <div className="flex flex-col gap-4 pt-1">
@@ -86,6 +214,8 @@ function FormFields({
           />
         </label>
       </div>
+
+      <OfficialImageSection code={activationCode} setCode={setActivationCode} />
 
       <label className="flex flex-col gap-1.5 border-t border-sand-200/80 pt-4 dark:border-sand-800">
         <span className="text-sm font-medium">优化提示词模型</span>
@@ -144,6 +274,7 @@ function CustomApiForm({
   const [reasoningEffort, setReasoningEffort] = useState(
     initial.reasoningEffort,
   );
+  const [activationCode, setActivationCode] = useState(initial.activationCode);
 
   const canSave = baseUrl.trim().length > 0 && apiKey.trim().length > 0;
 
@@ -154,6 +285,7 @@ function CustomApiForm({
       apiKey: apiKey.trim(),
       optimizeModel: optimizeModel.trim(),
       reasoningEffort,
+      activationCode,
     });
     onClose();
   }
@@ -168,6 +300,8 @@ function CustomApiForm({
       setOptimizeModel={setOptimizeModel}
       reasoningEffort={reasoningEffort}
       setReasoningEffort={setReasoningEffort}
+      activationCode={activationCode}
+      setActivationCode={setActivationCode}
     />
   );
 

@@ -68,8 +68,11 @@ export function isOfficialOpenAI(baseUrl: string): boolean {
 }
 
 /** 前端只有 standard / hd 两档，官方的 GPT 图片模型用 auto / high 等值；其他上游原样透传。 */
-export function resolveImageQuality(quality: string, baseUrl: string): string {
-  if (!isOfficialOpenAI(baseUrl)) return quality;
+export function resolveImageQuality(
+  quality: string,
+  official: boolean,
+): string {
+  if (!official) return quality;
   if (quality === "standard") return "auto";
   if (quality === "hd") return "high";
   return quality;

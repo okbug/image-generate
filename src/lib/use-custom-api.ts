@@ -2,6 +2,7 @@
 
 import { useCallback, useMemo, useSyncExternalStore } from "react";
 
+import { ACTIVATION_HEADER } from "@/lib/activation-shared";
 import {
   DEFAULT_REASONING_EFFORT,
   type ReasoningEffort,
@@ -19,6 +20,8 @@ export type CustomApiSettings = {
   optimizeModel: string;
   /** 优化提示词的思考强度，旧数据没有该字段时为默认档。 */
   reasoningEffort: ReasoningEffort;
+  /** 「使用官方生图」的激活码，空串表示未开启。只影响生图和改图，优化提示词仍走用户自己的 API。 */
+  activationCode: string;
 };
 
 const EMPTY_SETTINGS: CustomApiSettings = {
@@ -27,6 +30,7 @@ const EMPTY_SETTINGS: CustomApiSettings = {
   apiKey: "",
   optimizeModel: "",
   reasoningEffort: DEFAULT_REASONING_EFFORT,
+  activationCode: "",
 };
 
 const listeners = new Set<() => void>();
@@ -73,6 +77,8 @@ function parseSettings(raw: string | null): CustomApiSettings {
       optimizeModel:
         typeof parsed.optimizeModel === "string" ? parsed.optimizeModel : "",
       reasoningEffort: resolveReasoningEffort(parsed.reasoningEffort),
+      activationCode:
+        typeof parsed.activationCode === "string" ? parsed.activationCode : "",
     };
   } catch {
     return EMPTY_SETTINGS;
@@ -113,5 +119,22 @@ export function useCustomApi() {
     [settings],
   );
 
-  return { settings, save, buildHeaders, active: isActive(settings) };
+  /** 生图和改图用：在用户凭证之外带上激活码。优化提示词要用 buildHeaders，不能带激活码。 */
+  const buildImageHeaders = useCallback(
+    (extra?: HeadersInit): Headers => {
+      const headers = buildHeaders(extra);
+      const code = settings.activationCode.trim();
+      if (code) headers.set(ACTIVATION_HEADER, code);
+      return headers;
+    },
+    [buildHeaders, settings.activationCode],
+  );
+
+  return {
+    settings,
+    save,
+    buildHeaders,
+    buildImageHeaders,
+    active: isActive(settings),
+  };
 }

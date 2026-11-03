@@ -41,6 +41,9 @@ yarn-error.log*
 # imagebed permanent images (created at runtime)
 /public/images/permanent/*
 
+# runtime data (activation codes, usage records, ...)
+/data/
+
 # vercel
 .vercel
 

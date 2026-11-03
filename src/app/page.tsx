@@ -133,6 +133,7 @@ export default function Home({
     settings,
     save: saveCustomApi,
     buildHeaders,
+    buildImageHeaders,
     active: customApiActive,
   } = useCustomApi();
   const {
@@ -230,7 +231,7 @@ export default function Home({
     try {
       const res = await fetch("/api/generate", {
         method: "POST",
-        headers: buildHeaders({ "Content-Type": "application/json" }),
+        headers: buildImageHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify({
           prompt,
           model,
@@ -426,7 +427,7 @@ export default function Home({
     try {
       const res = await fetch("/api/edit", {
         method: "POST",
-        headers: buildHeaders({ "Content-Type": "application/json" }),
+        headers: buildImageHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify({
           prompt,
           imageUrls,
@@ -592,6 +593,12 @@ export default function Home({
             entryCount={historyEntries.length}
             onClearAll={clearHistory}
           />
+
+          {customApiActive && settings.activationCode && (
+            <p className="text-xs text-clay-700 dark:text-clay-300">
+              官方生图已开启：生图和改图走官方接口，优化提示词仍用你自己的 API。
+            </p>
+          )}
 
           <SubmitBar
             mode={mode}

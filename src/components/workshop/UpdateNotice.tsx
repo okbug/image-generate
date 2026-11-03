@@ -5,6 +5,7 @@ import { useRef, useState, useSyncExternalStore } from "react";
 import { Modal } from "antd";
 import {
   ArrowUpDown,
+  BadgeCheck,
   Brain,
   CircleHelp,
   CloudCheck,
@@ -25,6 +26,16 @@ type ReleaseItem = {
  * 弹窗按日期分组展示全部记录。
  */
 const RELEASES: { date: string; items: ReleaseItem[] }[] = [
+  {
+    date: "2026-11-03",
+    items: [
+      {
+        icon: BadgeCheck,
+        title: "新增「使用官方生图」",
+        desc: "在「API 与模型设置」里输入激活码即可开启，生图和改图走 OpenAI 官方接口，优化提示词仍用你自己的 API。想体验真 4K 图片请联系本人。",
+      },
+    ],
+  },
   {
     date: "2026-11-02",
     items: [

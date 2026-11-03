@@ -77,6 +77,12 @@ npm start        # 手动起 standalone —— 本机不要用，生产由 syste
 - 图床密码放在 `.env.local` 的 `IMAGEBED_PASSWORD`（不入库），只在服务端用 `isImagebedPassword()` 比对：`/api/imagebed/unlock`（图床页解锁）、`/api/upload`（永久存图）、`/api/tmp-images`。没配置时一律不通过。
 - `/demo` 的演示凭证在 `.env.local` 的 `DEMO_API_BASE_URL` / `DEMO_API_KEY`，访问密码是北京时间当天 `YYYYMMDD`，由 `/api/demo/unlock` 校验后下发。
 
+**官方生图与激活码（`src/lib/activation.ts`、`src/lib/image-access.ts`）**
+- 设置弹窗里输入激活码后，生图和改图带 `x-image-activation-code` 请求头，后端每次校验并改用 `.env.local` 的 `OFFICIAL_IMAGE_API_KEY` 调官方；优化提示词不带这个头，始终走用户自己的 API。没填自己的 BaseURL + Key 时即使有激活码也返回 401。
+- 数据在 `ACTIVATION_DATA_DIR`（线上必须在 `override.conf` 设到 `data/activation`，否则落在 `.next` 里被 build 清空）：`codes.json` 存激活码，`usage/<北京时间日期>.jsonl` 存使用记录（不含提示词）。
+- 每码每天默认 20 张（`DEFAULT_DAILY_LIMIT`），按北京时间算，只计成功出图的张数；在途请求先占额度防并发超限。
+- 管理页 `/admin/activation`，密码是 `.env.local` 的 `ACTIVATION_ADMIN_PASSWORD`，登录后发 7 天的 httpOnly Cookie，换密码即失效。
+
 **UI 层**
 - `AntdProvider` 用 MutationObserver 监听 `<html class="dark">` 切换 antd 主题；`layout.tsx` 内联脚本按系统偏好加 `dark` 类。antd 通过 `@ant-design/nextjs-registry` 注入样式。
 - `src/components/ui/*` 是 shadcn（base-nova 风格）生成的组件，`components.json` 是其配置。
