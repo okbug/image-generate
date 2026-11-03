@@ -7,7 +7,11 @@ import {
 import { buildUpstreamHeaders } from "@/lib/client-info";
 import { describeFetchError } from "@/lib/fetch-error";
 import { storeGeneratedImages } from "@/lib/generated-images";
-import { resolveImageCount, resolveImageModel } from "@/lib/models";
+import {
+  resolveImageCount,
+  resolveImageModel,
+  resolveImageQuality,
+} from "@/lib/models";
 import type { ImagesGenerationsResponse } from "@/types/images";
 
 export const runtime = "nodejs";
@@ -74,7 +78,7 @@ export async function POST(req: Request) {
     prompt,
     images: imageUrls.map((imageUrl) => ({ image_url: imageUrl })),
     size: body.size ?? "1024x1024",
-    quality: body.quality ?? "standard",
+    quality: resolveImageQuality(body.quality ?? "standard", baseUrl),
     output_format: "png" as const,
     n: resolveImageCount(body.n),
   };

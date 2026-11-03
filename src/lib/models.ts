@@ -58,6 +58,23 @@ export function resolveOptimizeModel(model: unknown): string {
   return resolveModel(model, DEFAULT_OPTIMIZE_MODEL);
 }
 
+/** Base URL 是否指向 OpenAI 官方接口。官方的 GPT 图片模型参数比中转服务严格，要特殊处理。 */
+export function isOfficialOpenAI(baseUrl: string): boolean {
+  try {
+    return new URL(baseUrl).hostname === "api.openai.com";
+  } catch {
+    return false;
+  }
+}
+
+/** 前端只有 standard / hd 两档，官方的 GPT 图片模型用 auto / high 等值；其他上游原样透传。 */
+export function resolveImageQuality(quality: string, baseUrl: string): string {
+  if (!isOfficialOpenAI(baseUrl)) return quality;
+  if (quality === "standard") return "auto";
+  if (quality === "hd") return "high";
+  return quality;
+}
+
 /** 优化提示词时的思考强度（上游 reasoning_effort），默认放数组里的 DEFAULT_REASONING_EFFORT。 */
 export const REASONING_EFFORT_OPTIONS = [
   { value: "low", label: "low" },

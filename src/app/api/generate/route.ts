@@ -7,7 +7,12 @@ import {
 import { buildUpstreamHeaders } from "@/lib/client-info";
 import { describeFetchError } from "@/lib/fetch-error";
 import { storeGeneratedImages } from "@/lib/generated-images";
-import { resolveImageCount, resolveImageModel } from "@/lib/models";
+import {
+  isOfficialOpenAI,
+  resolveImageCount,
+  resolveImageModel,
+  resolveImageQuality,
+} from "@/lib/models";
 import type {
   GenerateRequestBody,
   ImagesGenerationsResponse,
@@ -44,8 +49,11 @@ export async function POST(req: Request) {
     model: resolveImageModel(body.model),
     prompt,
     size: body.size ?? "1792x1024",
-    quality: body.quality ?? "standard",
-    response_format: "b64_json" as const,
+    quality: resolveImageQuality(body.quality ?? "standard", baseUrl),
+    // 官方的 GPT 图片模型不接受这个参数（报 unknown_parameter），且总是返回 b64_json
+    ...(isOfficialOpenAI(baseUrl)
+      ? {}
+      : { response_format: "b64_json" as const }),
     n: resolveImageCount(body.n),
   };
 
