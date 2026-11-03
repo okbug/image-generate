@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 
 import { Modal } from "antd";
 import {
@@ -99,6 +99,9 @@ const RELEASES: { date: string; items: ReleaseItem[] }[] = [
  */
 const DISMISS_KEY = `image-generator:update-notice-dismissed:${RELEASES[0].date}`;
 
+/** 弹窗至少展示这么多秒才能关闭，让用户有时间看一眼。 */
+const CLOSE_COUNTDOWN_SECONDS = 5;
+
 /** 2026-10-25 → 2026 年 10 月 25 日 */
 function formatDate(date: string): string {
   const [y, m, d] = date.split("-").map(Number);
@@ -129,7 +132,23 @@ export function UpdateNotice() {
     getServerDismissed,
   );
   const [closed, setClosed] = useState(false);
+  const [secondsLeft, setSecondsLeft] = useState(CLOSE_COUNTDOWN_SECONDS);
   const okRef = useRef<HTMLButtonElement>(null);
+  const open = !dismissed && !closed;
+  const canClose = secondsLeft === 0;
+
+  useEffect(() => {
+    if (!open || canClose) return;
+    const timer = window.setInterval(() => {
+      setSecondsLeft((current) => Math.max(current - 1, 0));
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [open, canClose]);
+
+  // antd 默认把焦点给右上角的 X；倒计时结束后聚焦「我知道了」，回车即确认
+  useEffect(() => {
+    if (open && canClose) okRef.current?.focus();
+  }, [open, canClose]);
 
   function handleNeverShow() {
     try {
@@ -142,19 +161,20 @@ export function UpdateNotice() {
 
   return (
     <Modal
-      open={!dismissed && !closed}
+      open={open}
       title="更新记录"
+      // 倒计时期间所有关闭方式都不可用：右上角 X、点遮罩、Esc 和两个按钮
+      closable={canClose}
+      mask={{ closable: canClose }}
+      keyboard={canClose}
       onCancel={() => setClosed(true)}
-      // antd 默认把焦点给右上角的 X；改成聚焦「我知道了」，回车即确认
-      afterOpenChange={(open) => {
-        if (open) okRef.current?.focus();
-      }}
       footer={[
         <button
           key="never"
           type="button"
+          disabled={!canClose}
           onClick={handleNeverShow}
-          className="mr-2 inline-flex h-9 items-center rounded-lg border border-sand-200 px-4 text-sm text-sand-600 transition hover:border-sand-300 hover:text-sand-900 dark:border-sand-700 dark:text-sand-300 dark:hover:text-white"
+          className="mr-2 inline-flex h-9 items-center rounded-lg border border-sand-200 px-4 text-sm text-sand-600 transition enabled:hover:border-sand-300 enabled:hover:text-sand-900 disabled:cursor-not-allowed disabled:opacity-50 dark:border-sand-700 dark:text-sand-300 dark:enabled:hover:text-white"
         >
           不再提醒
         </button>,
@@ -162,10 +182,11 @@ export function UpdateNotice() {
           key="ok"
           ref={okRef}
           type="button"
+          disabled={!canClose}
           onClick={() => setClosed(true)}
-          className="inline-flex h-9 items-center rounded-lg bg-clay-600 px-4 text-sm font-semibold text-white outline-none transition hover:bg-clay-700 dark:bg-clay-500 dark:hover:bg-clay-400"
+          className="inline-flex h-9 items-center rounded-lg bg-clay-600 px-4 text-sm font-semibold text-white outline-none transition enabled:hover:bg-clay-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-clay-500 dark:enabled:hover:bg-clay-400"
         >
-          我知道了
+          {canClose ? "我知道了" : `我知道了（${secondsLeft}s）`}
         </button>,
       ]}
     >
