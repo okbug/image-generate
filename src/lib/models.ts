@@ -23,6 +23,18 @@ export const IMAGE_MODEL_OPTIONS: ImageModelOption[] = [
       "大杯精修款：出图更慢，但改图最听话——只动你要求改的地方，其余细节原样保留。适合广告图、商品图、品牌物料。",
   },
   {
+    value: "gpt-image-2.6-sunburst",
+    label: "gpt-image-2.6-sunburst",
+    tag: "2.6 · Sunburst",
+    description: "2.6 Sunburst 生图模型，需上游接口支持该模型。",
+  },
+  {
+    value: "gpt-image2.6-flare",
+    label: "gpt-image2.6-flare",
+    tag: "2.6 · Flare",
+    description: "2.6 Flare 生图模型，需上游接口支持该模型。",
+  },
+  {
     value: "gpt-image-2",
     label: "gpt-image-2",
     tag: "最稳",

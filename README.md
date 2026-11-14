@@ -59,7 +59,7 @@ pnpm format         # Prettier 格式化
 
 ## 模型
 
-生图模型在 `src/lib/models.ts` 的 `IMAGE_MODEL_OPTIONS` 中配置，默认为 `gpt-image-2.5-sunburst`，另有 `gpt-image-2` 和 `gpt-image-2.5-flare` 两档。要增加档位，只需修改这个数组，默认模型需放在第一项。
+生图模型在 `src/lib/models.ts` 的 `IMAGE_MODEL_OPTIONS` 中配置，默认为 `gpt-image-2.5-sunburst`，另有 `gpt-image-2.6-sunburst`、`gpt-image2.6-flare`、`gpt-image-2` 和 `gpt-image-2.5-flare`。要增加档位，只需修改这个数组，默认模型需放在第一项。
 
 后端不做模型白名单校验：传入的模型名为空或不合法时，回落到默认模型。优化提示词所用的模型可以在设置弹窗中自由填写。
 

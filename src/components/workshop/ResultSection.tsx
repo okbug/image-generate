@@ -215,12 +215,13 @@ function ResultCard({
   const fileName = `image-${createdAt}-${index + 1}.${item.ext}`;
 
   return (
-    <figure className="glass overflow-hidden rounded-2xl sm:rounded-3xl">
+    <figure className="glass select-none overflow-hidden rounded-2xl [-webkit-user-select:none] sm:rounded-3xl">
       <div className="relative">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={item.src}
           alt={`生成结果 ${index + 1}`}
+          draggable={false}
           className={`block h-auto w-full ${deleted ? "opacity-30 grayscale" : ""}`}
         />
         {deleted && (
@@ -286,7 +287,7 @@ function ResultCard({
                 模型改写后的 Prompt
               </span>
             </summary>
-            <p className="mt-2 whitespace-pre-wrap text-sand-600 dark:text-sand-400">
+            <p className="mt-2 select-text whitespace-pre-wrap text-sand-600 [-webkit-user-select:text] dark:text-sand-400">
               {item.revisedPrompt}
             </p>
           </details>
