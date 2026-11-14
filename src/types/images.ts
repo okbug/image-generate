@@ -1,6 +1,7 @@
-export type ImageOutputFormat = "png" | "webp" | "jpeg";
+export type ImageOutputFormat = "png" | "webp" | "jpeg" | "gif";
 
 export type ImageItem = {
+  output_format?: ImageOutputFormat | string;
   b64_json?: string;
   url?: string;
   revised_prompt?: string;
@@ -76,6 +77,8 @@ export async function readApiJson<T>(
 
 export function mimeFromFormat(format: string | undefined): string {
   switch (format) {
+    case "gif":
+      return "image/gif";
     case "jpeg":
     case "jpg":
       return "image/jpeg";
@@ -89,6 +92,8 @@ export function mimeFromFormat(format: string | undefined): string {
 
 export function extFromFormat(format: string | undefined): string {
   switch (format) {
+    case "gif":
+      return "gif";
     case "jpeg":
     case "jpg":
       return "jpg";
@@ -98,4 +103,36 @@ export function extFromFormat(format: string | undefined): string {
     default:
       return "png";
   }
+}
+
+/** 优先识别文件内容，兼容上游漏报格式、逐张格式以及 URL 返回。 */
+export function imageFormat(
+  item: ImageItem,
+  fallback?: string,
+): string | undefined {
+  if (item.b64_json) {
+    try {
+      const header = atob(item.b64_json.slice(0, 24));
+      if (header.startsWith("GIF87a") || header.startsWith("GIF89a"))
+        return "gif";
+      if (header.startsWith("\x89PNG\r\n\x1a\n")) return "png";
+      if (header.startsWith("\xff\xd8\xff")) return "jpeg";
+      if (header.startsWith("RIFF") && header.slice(8, 12) === "WEBP")
+        return "webp";
+    } catch {
+      // 格式异常时仍保留上游声明，由原有流程处理。
+    }
+  }
+  if (item.output_format) return item.output_format;
+  if (item.url) {
+    try {
+      const ext = new URL(item.url, "https://localhost").pathname.match(
+        /\.(png|jpe?g|webp|gif)$/i,
+      )?.[1];
+      if (ext) return ext.toLowerCase() === "jpg" ? "jpeg" : ext.toLowerCase();
+    } catch {
+      // URL 没有可识别的扩展名时使用响应级格式。
+    }
+  }
+  return fallback;
 }

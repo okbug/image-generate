@@ -16,6 +16,7 @@ import { ApiKeyNotice } from "@/components/workshop/ApiKeyNotice";
 import { ErrorCard } from "@/components/workshop/ErrorCard";
 import {
   EDIT_DEFAULT_PROMPT,
+  ANIMATION_DEFAULT_PROMPT,
   ImageSource,
   MAX_UPLOAD_COUNT,
   Mode,
@@ -43,6 +44,7 @@ import { UpdateNotice } from "@/components/workshop/UpdateNotice";
 import { OfficialImageToggle } from "@/components/workshop/OfficialImageToggle";
 import { useReferenceImages } from "@/components/workshop/use-reference-images";
 import { DEFAULT_IMAGE_MODEL } from "@/lib/models";
+import { ACTIVATION_HEADER } from "@/lib/activation-shared";
 import { useCustomApi } from "@/lib/use-custom-api";
 import { isQuotaExceeded, useOfficialQuota } from "@/lib/use-official-quota";
 import {
@@ -77,7 +79,7 @@ export default function Home({
   // URL 带 ?mode=edit 时直接进入编辑模式（刷新后保持在编辑 tab）
   const initialMode =
     use(searchParams).mode === Mode.Edit ? Mode.Edit : Mode.Generate;
-  const [mode, setMode] = useState<Mode>(initialMode);
+  const [requestedMode, setMode] = useState<Mode>(initialMode);
   const [imageSource, setImageSource] = useState<ImageSource>(
     ImageSource.Upload,
   );
@@ -85,7 +87,7 @@ export default function Home({
   const [prompt, setPrompt] = useState(
     initialMode === Mode.Edit ? EDIT_DEFAULT_PROMPT : PROMPT_PRESETS[0],
   );
-  const [model, setModel] = useState(DEFAULT_IMAGE_MODEL);
+  const [imageModel, setModel] = useState(DEFAULT_IMAGE_MODEL);
   const [size, setSize] = useState(SIZE_OPTIONS[0].value);
   const [quality, setQuality] = useState(QUALITY_OPTIONS[0].value);
   const [customWidth, setCustomWidth] = useState(1024);
@@ -141,12 +143,18 @@ export default function Home({
     active: customApiActive,
   } = useCustomApi();
   const { modal, message } = App.useApp();
+  const { status: officialStatus, refresh: refreshOfficialQuota } =
+    useOfficialQuota(settings.activationCode, loading);
+  const canAnimate = officialStatus !== null;
+  const mode =
+    requestedMode === Mode.Animate && !canAnimate
+      ? Mode.Generate
+      : requestedMode;
+  const model = mode === Mode.Animate ? "gpt-image-2.6-sunburst" : imageModel;
   const officialActive =
     customApiActive &&
     Boolean(settings.activationCode) &&
-    settings.officialEnabled;
-  const { status: officialStatus, refresh: refreshOfficialQuota } =
-    useOfficialQuota(officialActive ? settings.activationCode : "", loading);
+    (settings.officialEnabled || mode === Mode.Animate);
   const [checkingQuota, setCheckingQuota] = useState(false);
   const {
     entries: timingEntries,
@@ -222,6 +230,7 @@ export default function Home({
   }
 
   function resolveSize(): string {
+    if (mode === Mode.Animate) return "512x512";
     if (size !== "custom") return size;
     return `${clampSide(customWidth)}x${clampSide(customHeight)}`;
   }
@@ -241,16 +250,22 @@ export default function Home({
     let ok = false;
 
     try {
-      const res = await fetch("/api/generate", {
-        method: "POST",
-        headers: buildImageHeaders({ "Content-Type": "application/json" }),
-        body: JSON.stringify({
-          prompt,
-          model,
-          size: usedSize,
-          quality,
-        }),
-      });
+      const headers = buildImageHeaders({ "Content-Type": "application/json" });
+      if (mode === Mode.Animate)
+        headers.set(ACTIVATION_HEADER, settings.activationCode);
+      const res = await fetch(
+        mode === Mode.Animate ? "/api/animate" : "/api/generate",
+        {
+          method: "POST",
+          headers,
+          body: JSON.stringify({
+            prompt,
+            model,
+            size: usedSize,
+            quality,
+          }),
+        },
+      );
 
       const json = await readApiJson<GenerateApiResult>(res);
 
@@ -486,6 +501,7 @@ export default function Home({
     }
     const submit = () =>
       mode === Mode.Edit ? handleEdit(e) : handleGenerate(e);
+    if (mode === Mode.Animate && !canAnimate) return;
     if (!officialActive) return submit();
     if (loading || checkingQuota) return;
 
@@ -500,7 +516,7 @@ export default function Home({
     if (isQuotaExceeded(quota)) return;
 
     modal.confirm({
-      title: `确认使用官方${mode === Mode.Edit ? "改图" : "生图"}？`,
+      title: `确认使用官方${mode === Mode.Animate ? "生成动图" : mode === Mode.Edit ? "改图" : "生图"}？`,
       content: (
         <div className="flex flex-col gap-1 pt-1 text-sm">
           <p>
@@ -522,6 +538,7 @@ export default function Home({
 
   function handleSwitchMode(next: Mode) {
     if (next === mode || loading || uploading) return;
+    if (next === Mode.Animate && !canAnimate) return;
     // 优化是按当前模式的提示词发的，切走后结果不该回填到新模式
     cancelOptimize();
     setMode(next);
@@ -530,11 +547,21 @@ export default function Home({
     // 切换模式时清理已上传图（避免遗留）
     if (uploadedImages.length > 0) clearUploadedImages();
     // 模式切换时按上下文回填默认 prompt（用户已改过则保留）
-    if (next === Mode.Edit && PROMPT_PRESETS.includes(prompt)) {
+    if (
+      next === Mode.Animate &&
+      (PROMPT_PRESETS.includes(prompt) || prompt === EDIT_DEFAULT_PROMPT)
+    ) {
+      setPrompt(ANIMATION_DEFAULT_PROMPT);
+    } else if (
+      next === Mode.Edit &&
+      (PROMPT_PRESETS.includes(prompt) || prompt === ANIMATION_DEFAULT_PROMPT)
+    ) {
       setPrompt(EDIT_DEFAULT_PROMPT);
     } else if (
       next === Mode.Generate &&
-      (!prompt.trim() || prompt === EDIT_DEFAULT_PROMPT)
+      (!prompt.trim() ||
+        prompt === EDIT_DEFAULT_PROMPT ||
+        prompt === ANIMATION_DEFAULT_PROMPT)
     ) {
       setPrompt(PROMPT_PRESETS[0]);
     }
@@ -557,7 +584,7 @@ export default function Home({
     loading ||
     uploading ||
     checkingQuota ||
-    isQuotaExceeded(officialStatus) ||
+    (officialActive && isQuotaExceeded(officialStatus)) ||
     !prompt.trim() ||
     (mode === Mode.Edit &&
       imageSource === ImageSource.Upload &&
@@ -577,6 +604,7 @@ export default function Home({
           uploading={uploading}
           customApiActive={customApiActive}
           needCustomApi={needCustomApi}
+          canAnimate={canAnimate}
           handleSwitchMode={handleSwitchMode}
           onOpenSettings={() => setApiModalOpen(true)}
         />
@@ -619,19 +647,32 @@ export default function Home({
             handleToggleOptimize={handleToggleOptimize}
           />
 
-          <GenerationOptions
-            model={model}
-            setModel={setModel}
-            size={size}
-            setSize={setSize}
-            quality={quality}
-            setQuality={setQuality}
-            customWidth={customWidth}
-            setCustomWidth={setCustomWidth}
-            customHeight={customHeight}
-            setCustomHeight={setCustomHeight}
-            loading={loading}
-          />
+          {mode === Mode.Animate ? (
+            <div className="rounded-xl border border-clay-200 bg-clay-50/70 p-4 text-sm text-clay-800 dark:border-clay-500/40 dark:bg-clay-500/10 dark:text-clay-200">
+              <p className="font-medium">
+                gpt-image-2.6-sunburst · GIF · 512×512
+              </p>
+              <p className="mt-1 text-xs leading-relaxed">
+                使用官方激活码额度，每次生成 1
+                张循环动图。描述想要的动作与循环方式；为保证动画可生成，尺寸固定为
+                512×512。
+              </p>
+            </div>
+          ) : (
+            <GenerationOptions
+              model={model}
+              setModel={setModel}
+              size={size}
+              setSize={setSize}
+              quality={quality}
+              setQuality={setQuality}
+              customWidth={customWidth}
+              setCustomWidth={setCustomWidth}
+              customHeight={customHeight}
+              setCustomHeight={setCustomHeight}
+              loading={loading}
+            />
+          )}
 
           <KeepHistorySwitch
             enabled={historyEnabled}
@@ -640,17 +681,19 @@ export default function Home({
             onClearAll={clearHistory}
           />
 
-          {customApiActive && settings.activationCode && (
-            <OfficialImageToggle
-              code={settings.activationCode}
-              enabled={settings.officialEnabled}
-              status={officialStatus}
-              disabled={loading}
-              onChange={(officialEnabled) =>
-                saveCustomApi({ ...settings, officialEnabled })
-              }
-            />
-          )}
+          {mode !== Mode.Animate &&
+            customApiActive &&
+            settings.activationCode && (
+              <OfficialImageToggle
+                code={settings.activationCode}
+                enabled={settings.officialEnabled}
+                status={officialStatus}
+                disabled={loading}
+                onChange={(officialEnabled) =>
+                  saveCustomApi({ ...settings, officialEnabled })
+                }
+              />
+            )}
 
           <SubmitBar
             mode={mode}

@@ -6,6 +6,7 @@ import {
   type ImageItem,
   type ImagesGenerationsResponse,
   extFromFormat,
+  imageFormat,
 } from "@/types/images";
 
 import { isPicbedConfigured, signDeleteToken, uploadToPicbed } from "./picbed";
@@ -24,15 +25,20 @@ export async function storeGeneratedImages(
 ): Promise<ImagesGenerationsResponse> {
   if (!Array.isArray(result?.data)) return result;
 
-  const ext = extFromFormat(result.output_format);
   const data = await Promise.all(
     result.data.map(async (item): Promise<ImageItem> => {
       if (!item.b64_json) return item;
+      const format = imageFormat(item, result.output_format);
+      const ext = extFromFormat(format);
       const buffer = Buffer.from(item.b64_json, "base64");
       const fileName = `gen-${crypto.randomUUID()}.${ext}`;
 
       // 上游可能还带 generation_id / model 等字段，原样保留，只换掉 b64_json
-      const base: ImageItem = { ...item, bytes: buffer.length };
+      const base: ImageItem = {
+        ...item,
+        output_format: format,
+        bytes: buffer.length,
+      };
       delete base.b64_json;
 
       if (isPicbedConfigured()) {

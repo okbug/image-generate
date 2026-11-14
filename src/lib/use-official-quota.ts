@@ -10,15 +10,19 @@ export function isQuotaExceeded(status: ActivationStatus | null): boolean {
 }
 
 /**
- * 官方生图的今日额度：开启时拉取，每次出图结束和切回页面时刷新（可能已过北京时间 0 点）。
- * 传空串表示没有开启，status 恒为 null。
+ * 校验激活码并拉取今日额度，每次出图结束和切回页面时刷新。
+ * 即使关闭普通生图的官方线路，也用于判断动图入口是否可见。
+ * 传空串表示没有激活码，status 恒为 null。
  */
 export function useOfficialQuota(code: string, busy: boolean) {
-  const [fetched, setFetched] = useState<ActivationStatus | null>(null);
+  const [fetched, setFetched] = useState<{
+    code: string;
+    status: ActivationStatus | null;
+  } | null>(null);
 
   const refresh = useCallback(async () => {
     const result = await verifyActivationCode(code);
-    setFetched("error" in result ? null : result);
+    setFetched({ code, status: "error" in result ? null : result });
     return result;
   }, [code]);
 
@@ -30,5 +34,8 @@ export function useOfficialQuota(code: string, busy: boolean) {
     return () => window.removeEventListener("focus", handleFocus);
   }, [busy, code, refresh]);
 
-  return { status: code ? fetched : null, refresh };
+  return {
+    status: code && fetched?.code === code ? fetched.status : null,
+    refresh,
+  };
 }

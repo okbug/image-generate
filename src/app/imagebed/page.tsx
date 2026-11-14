@@ -5,7 +5,7 @@ import { Upload, type UploadFile, type UploadProps } from "antd";
 import { UploadCloud, X, Lock, Unlock, Image as ImageIcon } from "lucide-react";
 
 const MAX_UPLOAD_COUNT = 10;
-const UPLOAD_ACCEPT = "image/png,image/jpeg,image/webp";
+const UPLOAD_ACCEPT = "image/png,image/jpeg,image/webp,image/gif";
 const MAX_UPLOAD_SIZE = 20 * 1024 * 1024;
 
 type UploadedImage = {
@@ -27,7 +27,7 @@ export default function ImageBedPage() {
 
   function validateUploadFile(file: File): string | null {
     if (!UPLOAD_ACCEPT.split(",").includes(file.type)) {
-      return "仅支持 PNG / JPG / WebP";
+      return "仅支持 PNG / JPG / WebP / GIF";
     }
     if (file.size > MAX_UPLOAD_SIZE) {
       return "图片不能超过 20MB";
@@ -268,7 +268,7 @@ export default function ImageBedPage() {
                       点击、拖拽或粘贴图片
                     </span>
                     <span className="text-sm leading-relaxed text-sand-500 dark:text-sand-400">
-                      支持 PNG / JPG / WebP，单张最大 20MB，最多{" "}
+                      支持 PNG / JPG / WebP / GIF，单张最大 20MB，最多{" "}
                       {MAX_UPLOAD_COUNT} 张
                     </span>
                   </div>

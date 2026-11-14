@@ -7,7 +7,7 @@ export const UPLOAD_PERMANENT_ROUTE = "/images/permanent";
  * 其余是用户上传。第 1 组是时间戳（清理按它判断过期），第 2 组是扩展名；同时用于防路径穿越。
  */
 export const UPLOAD_NAME_RE =
-  /^(\d{13})-(?:gen-)?[a-f0-9-]{36}\.(png|jpe?g|webp)$/i;
+  /^(\d{13})-(?:gen-)?[a-f0-9-]{36}\.(png|jpe?g|webp|gif)$/i;
 export const UPLOAD_EXPIRY_MS = 24 * 2 * 60 * 60 * 1000;
 
 /**
@@ -57,5 +57,6 @@ export function getUploadMime(fileName: string): string {
   const ext = path.extname(fileName).toLowerCase();
   if (ext === ".png") return "image/png";
   if (ext === ".webp") return "image/webp";
+  if (ext === ".gif") return "image/gif";
   return "image/jpeg";
 }

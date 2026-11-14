@@ -53,7 +53,11 @@ export function SubmitBar({
         {loading ? (
           <>
             <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/70 border-t-transparent" />
-            {mode === Mode.Edit ? "正在编辑" : "正在绘制"}
+            {mode === Mode.Animate
+              ? "正在生成动图"
+              : mode === Mode.Edit
+                ? "正在编辑"
+                : "正在绘制"}
             <span className="tabular-nums">{formatDuration(elapsedMs)}</span>
           </>
         ) : needCustomApi ? (
@@ -64,7 +68,11 @@ export function SubmitBar({
         ) : (
           <>
             <Sparkles className="h-4 w-4" />
-            {mode === Mode.Edit ? "编辑图片" : "生成图片"}
+            {mode === Mode.Animate
+              ? "生成动图"
+              : mode === Mode.Edit
+                ? "编辑图片"
+                : "生成图片"}
           </>
         )}
       </button>

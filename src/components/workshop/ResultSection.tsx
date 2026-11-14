@@ -11,6 +11,7 @@ import {
   type ImagesGenerationsResponse,
   extFromFormat,
   mimeFromFormat,
+  imageFormat,
 } from "@/types/images";
 
 import type { RenderedItem } from "./constants";
@@ -20,9 +21,10 @@ export function toRenderedItems(
   result: ImagesGenerationsResponse | null,
 ): RenderedItem[] {
   return (result?.data ?? []).flatMap((item: ImageItem): RenderedItem[] => {
-    const ext = extFromFormat(result?.output_format);
+    const format = imageFormat(item, result?.output_format);
+    const ext = extFromFormat(format);
     if (item.b64_json) {
-      const mime = mimeFromFormat(result?.output_format);
+      const mime = mimeFromFormat(format);
       return [
         {
           src: `data:${mime};base64,${item.b64_json}`,
@@ -236,6 +238,7 @@ function ResultCard({
         <div className="flex items-center justify-between text-xs">
           <span className="font-medium text-sand-700 dark:text-sand-300">
             #{index + 1} 作品
+            <span className="ml-2 text-sand-500">{item.ext.toUpperCase()}</span>
             {item.bytes !== undefined && (
               <span className="ml-2 font-normal text-sand-500 dark:text-sand-500">
                 {formatBytes(item.bytes)}

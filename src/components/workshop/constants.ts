@@ -33,8 +33,10 @@ export const PROMPT_PRESETS = [
 
 export const EDIT_DEFAULT_PROMPT =
   "提升画面清晰度与细节，让色彩更鲜明、画面更锐利";
+export const ANIMATION_DEFAULT_PROMPT =
+  "生成一张无缝循环的 GIF 动图：一只可爱的橘猫朝镜头挥手，白色背景，动作连贯自然，镜头固定。";
 export const MAX_UPLOAD_COUNT = 10;
-export const UPLOAD_ACCEPT = "image/png,image/jpeg,image/webp";
+export const UPLOAD_ACCEPT = "image/png,image/jpeg,image/webp,image/gif";
 export const MAX_UPLOAD_SIZE = 20 * 1024 * 1024;
 
 export type RenderedItem = {
@@ -53,6 +55,7 @@ export type RenderedItem = {
 export enum Mode {
   Generate = "generate",
   Edit = "edit",
+  Animate = "animate",
 }
 
 export enum ImageSource {
@@ -63,6 +66,7 @@ export enum ImageSource {
 export const MODE_OPTIONS: Array<{ value: Mode; label: string }> = [
   { value: Mode.Generate, label: "生成" },
   { value: Mode.Edit, label: "编辑" },
+  { value: Mode.Animate, label: "生成动图" },
 ];
 
 export const IMAGE_SOURCE_OPTIONS: Array<{
@@ -91,7 +95,7 @@ export function clampSide(n: number): number {
 
 export function validateUploadFile(file: File): string | null {
   if (!UPLOAD_ACCEPT.split(",").includes(file.type)) {
-    return "仅支持 PNG / JPG / WebP";
+    return "仅支持 PNG / JPG / WebP / GIF";
   }
   if (file.size > MAX_UPLOAD_SIZE) {
     return `图片不能超过 ${MAX_UPLOAD_SIZE / 1024 / 1024}MB`;

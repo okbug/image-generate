@@ -10,7 +10,7 @@ import { resolveOptimizeModel, resolveReasoningEffort } from "@/lib/models";
 
 export const runtime = "nodejs";
 
-type OptimizeMode = "generate" | "edit";
+type OptimizeMode = "generate" | "edit" | "animate";
 
 type OptimizeBody = {
   prompt?: string;
@@ -35,6 +35,10 @@ const COMMON_RULES = `通用规则：
 - 只输出最终 prompt 本身：不要解释、不要标题、不要引号包裹、不要 Markdown、不要"优化后："之类的前缀。`;
 
 const SYSTEM_PROMPTS: Record<OptimizeMode, string> = {
+  animate: `你是一名 GIF 动画提示词工程师。把用户的想法整理成简洁、可执行的循环动图描述。
+按主体、动作过程、回到起始状态的循环方式、场景和风格组织描述。保留用户明确的运动方向、节奏和镜头要求，优先简单动作和固定镜头。明确要求生成 GIF，保持动作连贯和无缝循环。不要改写为静态图、分镜或精灵图。用一到三句话表达。
+
+${COMMON_RULES}`,
   generate: `你是一名资深的 AI 图像提示词工程师，负责把用户的想法改写成能让 gpt-image 系列模型稳定出好图的提示词。
 
 改写方法：
@@ -59,7 +63,7 @@ ${COMMON_RULES}`,
 };
 
 function resolveMode(mode: unknown): OptimizeMode {
-  return mode === "edit" ? "edit" : "generate";
+  return mode === "animate" ? "animate" : mode === "edit" ? "edit" : "generate";
 }
 
 /** 模型偶尔还是会带上代码块、引号或"优化后："前缀，这里兜底剥掉。 */

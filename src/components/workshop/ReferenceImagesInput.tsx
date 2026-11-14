@@ -245,7 +245,8 @@ export function ReferenceImagesInput({
                 点击、拖拽或粘贴参考图片
               </span>
               <span className="text-xs leading-relaxed text-sand-500 dark:text-sand-400">
-                支持 PNG / JPG / WebP，单张最大 {MAX_UPLOAD_SIZE / 1024 / 1024}
+                支持 PNG / JPG / WebP / GIF，单张最大{" "}
+                {MAX_UPLOAD_SIZE / 1024 / 1024}
                 MB，最多 {MAX_UPLOAD_COUNT} 张
               </span>
               <span className="inline-flex items-center gap-1 text-[11px] text-sand-500 dark:text-sand-500">

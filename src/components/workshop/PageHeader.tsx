@@ -11,6 +11,7 @@ export function PageHeader({
   uploading,
   customApiActive,
   needCustomApi,
+  canAnimate,
   handleSwitchMode,
   onOpenSettings,
 }: {
@@ -20,6 +21,7 @@ export function PageHeader({
   uploading: boolean;
   customApiActive: boolean;
   needCustomApi: boolean;
+  canAnimate: boolean;
   handleSwitchMode: (next: Mode) => void;
   onOpenSettings: () => void;
 }) {
@@ -32,14 +34,18 @@ export function PageHeader({
         </span>
         <h1 className="brand-title text-3xl md:text-5xl">AI 图片工坊</h1>
         <p className="max-w-xl text-sm leading-relaxed text-sand-600 dark:text-sand-400 md:text-base">
-          {mode === Mode.Edit
-            ? `上传最多 ${MAX_UPLOAD_COUNT} 张参考图，描述想要的修改，由模型重绘。`
-            : "把你脑中的画面写下来，几秒后就能拿到一张高清成片。"}
+          {mode === Mode.Animate
+            ? "描述主体的动作与循环方式，使用官方线路生成 GIF 动图。"
+            : mode === Mode.Edit
+              ? `上传最多 ${MAX_UPLOAD_COUNT} 张参考图，描述想要的修改，由模型重绘。`
+              : "把你脑中的画面写下来，几秒后就能拿到一张高清成片。"}
         </p>
       </div>
       <div className="flex shrink-0 items-center gap-2 self-start">
         <div className="flex h-10 items-center gap-1 rounded-full border border-sand-200/80 bg-white/70 p-1 backdrop-blur dark:border-sand-700/70 dark:bg-sand-900/60">
-          {MODE_OPTIONS.map((opt) => (
+          {MODE_OPTIONS.filter(
+            (opt) => opt.value !== Mode.Animate || canAnimate,
+          ).map((opt) => (
             <button
               key={opt.value}
               type="button"

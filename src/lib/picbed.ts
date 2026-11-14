@@ -10,7 +10,7 @@ const DELETE_TIMEOUT_MS = 30_000;
 
 /** store_key 只允许时间戳 + 本站生成的 gen-<uuid> 文件名，防止借删除接口删图床里别的图。 */
 export const PICBED_GEN_KEY_RE =
-  /^\d{8}-\d{6}_gen-[a-f0-9-]{36}(?:-\d+)?\.(png|jpg|webp)$/;
+  /^\d{8}-\d{6}_gen-[a-f0-9-]{36}(?:-\d+)?\.(png|jpg|webp|gif)$/;
 
 function getConfig(): { baseUrl: string; token: string } | null {
   const baseUrl = process.env.PICBED_BASE_URL?.trim().replace(/\/$/, "");

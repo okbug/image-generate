@@ -17,6 +17,25 @@ const GUIDES: Record<
     tips: string[];
   }
 > = {
+  [Mode.Animate]: {
+    formula: [
+      { part: "主体", example: "一只橘猫" },
+      { part: "动作", example: "抬起爪子向镜头挥手" },
+      { part: "循环方式", example: "挥手后回到起始姿势，无缝循环" },
+      { part: "场景", example: "纯白背景，固定镜头，卡通风格" },
+    ],
+    examples: [
+      {
+        bad: "一只猫的动图",
+        good: "生成循环 GIF：一只卡通橘猫抬起爪子向镜头挥手，再回到起始姿势。纯白背景，固定镜头，动作连贯。",
+      },
+    ],
+    tips: [
+      "写清主体如何运动，以及动作结束后如何回到起始状态。",
+      "优先选择简单、重复的动作，比如眨眼、挥手、弹跳。",
+      "使用固定镜头和简单背景，让动作更清楚。",
+    ],
+  },
   [Mode.Generate]: {
     formula: [
       { part: "主体", example: "一只橘猫" },

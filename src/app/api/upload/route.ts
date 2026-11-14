@@ -13,13 +13,19 @@ import {
 
 export const runtime = "nodejs";
 
-const ALLOWED_MIME = new Set(["image/png", "image/jpeg", "image/webp"]);
+const ALLOWED_MIME = new Set([
+  "image/png",
+  "image/jpeg",
+  "image/webp",
+  "image/gif",
+]);
 const MAX_SIZE = 20 * 1024 * 1024;
 
 function extFromMime(mime: string): string {
   if (mime === "image/png") return "png";
   if (mime === "image/jpeg") return "jpg";
   if (mime === "image/webp") return "webp";
+  if (mime === "image/gif") return "gif";
   return "png";
 }
 
@@ -37,7 +43,7 @@ export async function POST(req: Request) {
   }
   if (!ALLOWED_MIME.has(file.type)) {
     return NextResponse.json(
-      { error: "仅支持 PNG / JPG / WebP" },
+      { error: "仅支持 PNG / JPG / WebP / GIF" },
       { status: 400 },
     );
   }
