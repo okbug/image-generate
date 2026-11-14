@@ -246,6 +246,22 @@ export default function Home({
     e.preventDefault();
     if (!prompt.trim() || loading) return;
 
+    let animationImageUrls: string[] = [];
+    if (mode === Mode.Animate) {
+      if (uploading) return;
+      animationImageUrls =
+        imageSource === ImageSource.Url
+          ? parsedExternalUrls
+          : uploadedImages.map((image) => image.url);
+      if (animationImageUrls.length > 0) {
+        const validationError = validateExternalUrls(animationImageUrls);
+        if (validationError) {
+          setError(validationError);
+          return;
+        }
+      }
+    }
+
     setLoading(true);
     setError(null);
     setResult(null);
@@ -271,7 +287,10 @@ export default function Home({
             size: usedSize,
             quality,
             ...(mode === Mode.Animate
-              ? { official: settings.officialEnabled }
+              ? {
+                  official: settings.officialEnabled,
+                  imageUrls: animationImageUrls,
+                }
               : {}),
           }),
         },
@@ -627,21 +646,29 @@ export default function Home({
           {needCustomApi && (
             <ApiKeyNotice onOpenSettings={() => setApiModalOpen(true)} />
           )}
-          {mode === Mode.Edit && (
-            <ReferenceImagesInput
-              imageSource={imageSource}
-              onSwitchSource={handleSwitchImageSource}
-              loading={loading}
-              uploading={uploading}
-              uploadProps={uploadProps}
-              uploadedImages={uploadedImages}
-              uploadFileList={uploadFileList}
-              onRemoveImage={removeUploadedImage}
-              onReorderImages={reorderUploadedImages}
-              externalUrl={externalUrl}
-              setExternalUrl={setExternalUrl}
-              parsedExternalUrls={parsedExternalUrls}
-            />
+          {(mode === Mode.Edit || mode === Mode.Animate) && (
+            <div className="flex flex-col gap-2">
+              {mode === Mode.Animate && (
+                <p className="text-xs text-sand-500 dark:text-sand-400">
+                  参考图片（可选）：上传图片或填写
+                  URL，让模型基于参考图生成动图；留空则根据提示词生成。
+                </p>
+              )}
+              <ReferenceImagesInput
+                imageSource={imageSource}
+                onSwitchSource={handleSwitchImageSource}
+                loading={loading}
+                uploading={uploading}
+                uploadProps={uploadProps}
+                uploadedImages={uploadedImages}
+                uploadFileList={uploadFileList}
+                onRemoveImage={removeUploadedImage}
+                onReorderImages={reorderUploadedImages}
+                externalUrl={externalUrl}
+                setExternalUrl={setExternalUrl}
+                parsedExternalUrls={parsedExternalUrls}
+              />
+            </div>
           )}
 
           <PromptInput

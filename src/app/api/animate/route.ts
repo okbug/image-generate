@@ -18,7 +18,7 @@ export async function POST(req: Request) {
       { status: 403 },
     );
   }
-  let body: { prompt?: unknown; official?: unknown };
+  let body: { prompt?: unknown; official?: unknown; imageUrls?: unknown };
   try {
     body = await req.json();
   } catch {
@@ -30,6 +30,43 @@ export async function POST(req: Request) {
   const prompt = typeof body?.prompt === "string" ? body.prompt.trim() : "";
   if (!prompt) {
     return NextResponse.json({ error: "prompt 不能为空" }, { status: 400 });
+  }
+  if (
+    body.imageUrls !== undefined &&
+    (!Array.isArray(body.imageUrls) ||
+      body.imageUrls.some((url) => typeof url !== "string"))
+  ) {
+    return NextResponse.json(
+      { error: "imageUrls 必须是图片 URL 数组" },
+      { status: 400 },
+    );
+  }
+  const imageUrls = [
+    ...new Set(
+      ((body.imageUrls ?? []) as string[])
+        .map((url) => url.trim())
+        .filter(Boolean),
+    ),
+  ];
+  if (imageUrls.length > 10) {
+    return NextResponse.json(
+      { error: "最多支持 10 张参考图片" },
+      { status: 400 },
+    );
+  }
+  if (
+    imageUrls.some((url) => {
+      try {
+        return !["http:", "https:"].includes(new URL(url).protocol);
+      } catch {
+        return true;
+      }
+    })
+  ) {
+    return NextResponse.json(
+      { error: "图片 URL 需为有效的 http(s):// 地址" },
+      { status: 400 },
+    );
   }
   const model = "gpt-image-2.6-sunburst";
   const size = "512x512";
@@ -49,12 +86,12 @@ export async function POST(req: Request) {
     accessRequest = new Request(req.url, { headers });
   }
   const access = await resolveImageAccess(accessRequest, {
-    mode: "generate",
+    mode: imageUrls.length ? "edit" : "generate",
     model,
     size,
     quality: "standard",
     n: 1,
-    referenceCount: 0,
+    referenceCount: imageUrls.length,
   });
   if (isAccessError(access)) {
     return NextResponse.json(
@@ -62,12 +99,20 @@ export async function POST(req: Request) {
       { status: access.status },
     );
   }
-  return forwardImageRequest(req, access, "/v1/images/generations", {
-    model,
-    prompt,
-    size,
-    quality: "auto",
-    output_format: "gif",
-    n: 1,
-  });
+  return forwardImageRequest(
+    req,
+    access,
+    imageUrls.length ? "/v1/images/edits" : "/v1/images/generations",
+    {
+      model,
+      prompt,
+      size,
+      quality: "auto",
+      output_format: "gif",
+      n: 1,
+      ...(imageUrls.length
+        ? { images: imageUrls.map((imageUrl) => ({ image_url: imageUrl })) }
+        : {}),
+    },
+  );
 }

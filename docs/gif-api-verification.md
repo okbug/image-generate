@@ -16,4 +16,6 @@
 
 三个 Tab 分别绑定 `?mode=generate`、`?mode=edit`、`?mode=animate`。动图链接在激活码验证通过后恢复到对应 Tab。
 
+动图支持可选的 `imageUrls`（最多 10 张 HTTP(S) 参考图）。有参考图时向 `/v1/images/edits` 发送 `images: [{ image_url }]` 和 `output_format: gif`，没有参考图时继续调用 `/v1/images/generations`。参考图可通过上传或 URL 输入提供；官方和自填线路共用此处理。
+
 验证回归：`node tests/image-formats.test.mjs`。
