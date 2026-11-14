@@ -35,7 +35,7 @@ export function PageHeader({
         <h1 className="brand-title text-3xl md:text-5xl">AI 图片工坊</h1>
         <p className="max-w-xl text-sm leading-relaxed text-sand-600 dark:text-sand-400 md:text-base">
           {mode === Mode.Animate
-            ? "描述主体的动作与循环方式，使用官方线路生成 GIF 动图。"
+            ? "描述主体的动作与循环方式，生成 GIF 动图。"
             : mode === Mode.Edit
               ? `上传最多 ${MAX_UPLOAD_COUNT} 张参考图，描述想要的修改，由模型重绘。`
               : "把你脑中的画面写下来，几秒后就能拿到一张高清成片。"}

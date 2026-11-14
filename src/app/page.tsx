@@ -63,11 +63,10 @@ function noopSubscribe() {
   return () => {};
 }
 
-/** 编辑模式在 URL 上记 mode=edit，生成模式去掉该参数；用 replaceState 不产生历史记录。 */
+/** 三种模式都绑定 mode 参数，保留其余查询参数。 */
 function syncModeToUrl(mode: Mode) {
   const url = new URL(window.location.href);
-  if (mode === Mode.Edit) url.searchParams.set("mode", Mode.Edit);
-  else url.searchParams.delete("mode");
+  url.searchParams.set("mode", mode);
   window.history.replaceState(window.history.state, "", url);
 }
 
@@ -76,16 +75,24 @@ export default function Home({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  // URL 带 ?mode=edit 时直接进入编辑模式（刷新后保持在编辑 tab）
+  const urlMode = use(searchParams).mode;
   const initialMode =
-    use(searchParams).mode === Mode.Edit ? Mode.Edit : Mode.Generate;
+    urlMode === Mode.Animate
+      ? Mode.Animate
+      : urlMode === Mode.Edit
+        ? Mode.Edit
+        : Mode.Generate;
   const [requestedMode, setMode] = useState<Mode>(initialMode);
   const [imageSource, setImageSource] = useState<ImageSource>(
     ImageSource.Upload,
   );
   const [externalUrl, setExternalUrl] = useState("");
   const [prompt, setPrompt] = useState(
-    initialMode === Mode.Edit ? EDIT_DEFAULT_PROMPT : PROMPT_PRESETS[0],
+    initialMode === Mode.Animate
+      ? ANIMATION_DEFAULT_PROMPT
+      : initialMode === Mode.Edit
+        ? EDIT_DEFAULT_PROMPT
+        : PROMPT_PRESETS[0],
   );
   const [imageModel, setModel] = useState(DEFAULT_IMAGE_MODEL);
   const [size, setSize] = useState(SIZE_OPTIONS[0].value);
@@ -154,7 +161,7 @@ export default function Home({
   const officialActive =
     customApiActive &&
     Boolean(settings.activationCode) &&
-    (settings.officialEnabled || mode === Mode.Animate);
+    settings.officialEnabled;
   const [checkingQuota, setCheckingQuota] = useState(false);
   const {
     entries: timingEntries,
@@ -263,6 +270,9 @@ export default function Home({
             model,
             size: usedSize,
             quality,
+            ...(mode === Mode.Animate
+              ? { official: settings.officialEnabled }
+              : {}),
           }),
         },
       );
@@ -653,8 +663,10 @@ export default function Home({
                 gpt-image-2.6-sunburst · GIF · 512×512
               </p>
               <p className="mt-1 text-xs leading-relaxed">
-                使用官方激活码额度，每次生成 1
-                张循环动图。描述想要的动作与循环方式；为保证动画可生成，尺寸固定为
+                {settings.officialEnabled
+                  ? "使用官方激活码额度"
+                  : "使用你自己的 API，上游需开通 GIF 输出"}
+                ，每次生成 1 张循环动图。描述想要的动作与循环方式；尺寸固定为
                 512×512。
               </p>
             </div>
@@ -681,19 +693,18 @@ export default function Home({
             onClearAll={clearHistory}
           />
 
-          {mode !== Mode.Animate &&
-            customApiActive &&
-            settings.activationCode && (
-              <OfficialImageToggle
-                code={settings.activationCode}
-                enabled={settings.officialEnabled}
-                status={officialStatus}
-                disabled={loading}
-                onChange={(officialEnabled) =>
-                  saveCustomApi({ ...settings, officialEnabled })
-                }
-              />
-            )}
+          {customApiActive && settings.activationCode && (
+            <OfficialImageToggle
+              code={settings.activationCode}
+              enabled={settings.officialEnabled}
+              status={officialStatus}
+              disabled={loading}
+              animation={mode === Mode.Animate}
+              onChange={(officialEnabled) =>
+                saveCustomApi({ ...settings, officialEnabled })
+              }
+            />
+          )}
 
           <SubmitBar
             mode={mode}

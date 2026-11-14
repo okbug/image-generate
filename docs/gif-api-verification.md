@@ -12,6 +12,8 @@
 
 成功响应仍为常规图像 JSON：`data[].b64_json` 是完整 GIF 文件的 base64，`data[].generation_id` 为生成 ID，响应级 `output_format` 为 `gif`，并带 `size`、`quality`、`usage`。没有额外的轮询、帧列表或视频下载接口。
 
-`POST /api/animate` 要求官方激活码，复用现有额度预留、使用记录与归还流程，固定模型、512×512、GIF 和单张输出。上游实际文件格式优先于声明；存储和下载保留原始字节，不重新编码动画。
+`POST /api/animate` 要求有效官方激活码才能使用。默认走官方，复用现有额度预留、使用记录与归还流程；`official: false` 时校验激活码后使用用户自填 API，不占用官方额度，需该上游支持 GIF。固定模型、512×512、GIF 和单张输出。上游实际文件格式优先于声明；存储和下载保留原始字节，不重新编码动画。
+
+三个 Tab 分别绑定 `?mode=generate`、`?mode=edit`、`?mode=animate`。动图链接在激活码验证通过后恢复到对应 Tab。
 
 验证回归：`node tests/image-formats.test.mjs`。

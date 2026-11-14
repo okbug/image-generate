@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
-import { ACTIVATION_HEADER } from "@/lib/activation-shared";
+import { ACTIVATION_HEADER, ACTIVATION_KEY_RE } from "@/lib/activation-shared";
+import { getActivationStatus } from "@/lib/activation";
 import {
   forwardImageRequest,
   isAccessError,
@@ -17,7 +18,7 @@ export async function POST(req: Request) {
       { status: 403 },
     );
   }
-  let body: { prompt?: unknown };
+  let body: { prompt?: unknown; official?: unknown };
   try {
     body = await req.json();
   } catch {
@@ -32,7 +33,22 @@ export async function POST(req: Request) {
   }
   const model = "gpt-image-2.6-sunburst";
   const size = "512x512";
-  const access = await resolveImageAccess(req, {
+  let accessRequest = req;
+  if (body.official === false) {
+    // 激活码仍控制动图功能权限，但关闭官方线路后不占用官方额度。
+    const code = req.headers.get(ACTIVATION_HEADER)!.trim();
+    if (!ACTIVATION_KEY_RE.test(code) || !(await getActivationStatus(code))) {
+      await new Promise((resolve) => setTimeout(resolve, 800));
+      return NextResponse.json(
+        { error: "激活码无效或已停用" },
+        { status: 403 },
+      );
+    }
+    const headers = new Headers(req.headers);
+    headers.delete(ACTIVATION_HEADER);
+    accessRequest = new Request(req.url, { headers });
+  }
+  const access = await resolveImageAccess(accessRequest, {
     mode: "generate",
     model,
     size,

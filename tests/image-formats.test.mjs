@@ -174,11 +174,21 @@ test("animated GIF survives storage, GET/HEAD, rendering, and upload/delete unch
 test("animation endpoint requires activation and pins GIF model/size/count on the server", async () => {
   const accessFile = path.resolve(__dirname, "../src/lib/image-access.ts");
   const previous = modules.get(accessFile);
+  const activationFile = path.resolve(__dirname, "../src/lib/activation.ts");
+  const previousActivation = modules.get(activationFile);
+  modules.set(activationFile, {
+    exports: {
+      getActivationStatus: async (code) =>
+        code === "valid" ? { user: "Test" } : null,
+    },
+  });
   let resolved = 0;
+  let activationHeader;
   let accessResult = { official: true };
   modules.set(accessFile, {
     exports: {
       resolveImageAccess: async (_req, meta) => {
+        activationHeader = _req.headers.get("x-image-activation-code");
         resolved++;
         assert.equal(meta.n, 1);
         assert.equal(meta.size, "512x512");
@@ -201,7 +211,7 @@ test("animation endpoint requires activation and pins GIF model/size/count on th
   });
   try {
     const route = loadSource("src/app/api/animate/route.ts");
-    const makeRequest = (code) =>
+    const makeRequest = (code, official = true) =>
       new Request("https://example.com/api/animate", {
         method: "POST",
         headers: {
@@ -213,6 +223,7 @@ test("animation endpoint requires activation and pins GIF model/size/count on th
           model: "other",
           size: "4096x4096",
           n: 4,
+          official,
         }),
       });
     assert.equal((await route.POST(makeRequest())).status, 403);
@@ -221,7 +232,21 @@ test("animation endpoint requires activation and pins GIF model/size/count on th
     assert.equal((await route.POST(makeRequest("invalid"))).status, 403);
     accessResult = { official: true };
     assert.equal((await route.POST(makeRequest("valid"))).status, 200);
+    assert.equal(
+      activationHeader,
+      "valid",
+      "official request reserves activation quota",
+    );
+    assert.equal((await route.POST(makeRequest("invalid", false))).status, 403);
+    assert.equal((await route.POST(makeRequest("valid", false))).status, 200);
+    assert.equal(
+      activationHeader,
+      null,
+      "custom route does not reserve official quota",
+    );
   } finally {
+    if (previousActivation) modules.set(activationFile, previousActivation);
+    else modules.delete(activationFile);
     if (previous) modules.set(accessFile, previous);
     else modules.delete(accessFile);
   }

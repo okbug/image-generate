@@ -18,12 +18,14 @@ export function OfficialImageToggle({
   status,
   disabled,
   onChange,
+  animation = false,
 }: {
   code: string;
   enabled: boolean;
   status: ActivationStatus | null;
   disabled: boolean;
   onChange: (enabled: boolean) => void;
+  animation?: boolean;
 }) {
   const { message } = App.useApp();
   const [toggling, setToggling] = useState(false);
@@ -47,6 +49,11 @@ export function OfficialImageToggle({
   }
 
   function renderText() {
+    if (animation) {
+      if (!enabled)
+        return "官方生图已关闭：动图使用你自己的 API，上游需支持 GIF。";
+      return `官方生图已开启：动图走官方接口。${status ? `今日已用 ${status.usedToday}/${status.dailyLimit} 张。` : ""}${exceeded ? "今日额度已用完，北京时间 0 点重置。" : ""}`;
+    }
     if (!enabled) return "官方生图已关闭：生图和改图使用你自己的 API。";
     if (exceeded && status) {
       return `今日官方额度已用完（${status.usedToday}/${status.dailyLimit} 张），北京时间 0 点重置。建议切换到普通模式，用你自己的 API 继续出图。`;
