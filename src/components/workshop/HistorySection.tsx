@@ -164,7 +164,9 @@ export function HistorySection({
         张，超出后会自动删除最旧的图片（同时删除图床中的文件）。记录只存在当前浏览器，清除浏览器数据会丢失这些记录，但图床中的图片不会被删除。
       </p>
 
-      <Image.PreviewGroup>
+      {/* 必须传 items：不传时 PreviewGroup 按图片挂载先后排序，新图插到最前面后会排到最后，
+          点第一张预览显示成「12 / 12」、翻页顺序也乱掉 */}
+      <Image.PreviewGroup items={visible.map((entry) => entry.url)}>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
           {visible.map((entry) => (
             <figure

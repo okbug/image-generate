@@ -203,7 +203,8 @@ export default function TmpImagesPage() {
                 <p>目前没有临时图片。</p>
               </div>
             ) : (
-              <Image.PreviewGroup>
+              /* 传 items 让翻页顺序跟列表一致，不受图片挂载先后影响 */
+              <Image.PreviewGroup items={images.map((image) => image.url)}>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                   {images.map((image) => (
                     <figure
