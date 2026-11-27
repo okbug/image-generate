@@ -148,6 +148,7 @@ export default function Home({
     buildHeaders,
     buildImageHeaders,
     active: customApiActive,
+    invalidWhitespace: customApiInvalidWhitespace,
   } = useCustomApi();
   const { modal, message } = App.useApp();
   const { status: officialStatus, refresh: refreshOfficialQuota } =
@@ -644,7 +645,10 @@ export default function Home({
           className="glass flex flex-col gap-4 rounded-2xl p-4 sm:gap-5 sm:rounded-3xl sm:p-6 md:p-8"
         >
           {needCustomApi && (
-            <ApiKeyNotice onOpenSettings={() => setApiModalOpen(true)} />
+            <ApiKeyNotice
+              onOpenSettings={() => setApiModalOpen(true)}
+              invalidWhitespace={customApiInvalidWhitespace}
+            />
           )}
           {(mode === Mode.Edit || mode === Mode.Animate) && (
             <div className="flex flex-col gap-2">

@@ -109,8 +109,20 @@ function parseSettings(raw: string | null): CustomApiSettings {
   }
 }
 
+/**
+ * 旧版本没校验空格，localStorage 里可能存着中间带空格/换行的凭证：首尾空格请求时会去掉不影响，
+ * 中间有空白的一定是粘错了（且换行会让 Headers 直接抛错），视为不可用，提示用户去设置里改。
+ */
+function hasInnerWhitespace(s: CustomApiSettings): boolean {
+  return /\s/.test(s.baseUrl.trim()) || /\s/.test(s.apiKey.trim());
+}
+
 function isActive(s: CustomApiSettings): boolean {
-  return s.baseUrl.trim().length > 0 && s.apiKey.trim().length > 0;
+  return (
+    s.baseUrl.trim().length > 0 &&
+    s.apiKey.trim().length > 0 &&
+    !hasInnerWhitespace(s)
+  );
 }
 
 export function useCustomApi() {
@@ -162,5 +174,7 @@ export function useCustomApi() {
     buildHeaders,
     buildImageHeaders,
     active: isActive(settings),
+    /** 已保存的凭证中间有空白（旧数据），需要用户去设置里修正 */
+    invalidWhitespace: hasInnerWhitespace(settings),
   };
 }
