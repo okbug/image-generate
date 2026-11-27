@@ -131,6 +131,19 @@ function OfficialImageSection({
   );
 }
 
+/** BaseURL / Key 里不允许出现任何空白（含首尾、中间、换行），复制粘贴时常带进来导致请求失败。 */
+function hasWhitespace(value: string) {
+  return /\s/.test(value);
+}
+
+function WhitespaceError() {
+  return (
+    <span className="text-xs text-red-600 dark:text-red-300">
+      不能包含空格或换行，请删除后再保存
+    </span>
+  );
+}
+
 function FormFields({
   baseUrl,
   setBaseUrl,
@@ -154,6 +167,9 @@ function FormFields({
   activationCode: string;
   setActivationCode: (v: string) => void;
 }) {
+  const baseUrlInvalid = hasWhitespace(baseUrl);
+  const apiKeyInvalid = hasWhitespace(apiKey);
+
   return (
     <div className="flex flex-col gap-4 pt-1">
       <div className="rounded-lg border border-clay-200 bg-clay-50 px-3 py-2 text-xs leading-relaxed text-clay-800 dark:border-clay-700/40 dark:bg-clay-500/10 dark:text-clay-200">
@@ -184,7 +200,9 @@ function FormFields({
             onChange={(e) => setBaseUrl(e.target.value)}
             placeholder="例如 https://your-api-host.com"
             size="large"
+            status={baseUrlInvalid ? "error" : undefined}
           />
+          {baseUrlInvalid && <WhitespaceError />}
           <span className="text-[11px] text-sand-500 dark:text-sand-400">
             填你自己的 OpenAI 兼容服务地址，不要带末尾斜杠，路径会自动拼接
             /v1/...
@@ -199,7 +217,9 @@ function FormFields({
             placeholder="sk-..."
             size="large"
             autoComplete="off"
+            status={apiKeyInvalid ? "error" : undefined}
           />
+          {apiKeyInvalid && <WhitespaceError />}
         </label>
       </div>
 
@@ -264,7 +284,11 @@ function CustomApiForm({
   );
   const [activationCode, setActivationCode] = useState(initial.activationCode);
 
-  const canSave = baseUrl.trim().length > 0 && apiKey.trim().length > 0;
+  const canSave =
+    baseUrl.length > 0 &&
+    apiKey.length > 0 &&
+    !hasWhitespace(baseUrl) &&
+    !hasWhitespace(apiKey);
 
   function handleOk() {
     onSave({
